@@ -1,0 +1,48 @@
+Name: auth-api
+Host: 0.0.0.0
+Port: 8888
+
+# MySQL 配置
+MySQL:
+  DataSource: root:630630@tcp(127.0.0.1:3306)/im_auth?charset=utf8mb4&parseTime=True&loc=Local
+
+# Redis 缓存配置（用于Model缓存）
+Cache:
+  - Host: 127.0.0.1:6379
+    Type: node
+    Pass: "123456"
+
+# Redis 配置（用于验证码等）
+Redis:
+  Host: 127.0.0.1:6379
+  Type: node
+  Pass: "123456"
+
+# JWT AccessToken 配置
+Auth:
+  AccessSecret: "Skylm-im-secret-key"
+  AccessExpire: 604800  # 7天（秒）
+
+# RefreshToken 配置
+RefreshToken:
+  Secret: "Skylm-im-refresh-secret-key"
+  Expire: 2592000  # 30天（秒）
+
+# QQ邮箱配置
+Email:
+  Host: smtp.qq.com
+  Port: 465
+  Username: 1787924335@qq.com
+  Password: pwvgglpbfnnhbddi
+  From: "myIM系统"
+
+# 验证码配置
+Captcha:
+  Expire: 300  # 5分钟过期
+  Length: 6    # 6位验证码
+
+# 日志配置
+Log:
+  ServiceName: auth-api
+  Mode: console
+  Level: info

@@ -1,0 +1,129 @@
+syntax = "v1"
+
+info (
+	title:   "Auth API"
+	desc:    "IM系统用户认证服务"
+	author:  "myIM"
+	version: "1.0"
+)
+
+// ==================== 公共响应类型 ====================
+type TokenResponse {
+	AccessToken  string `json:"accessToken"`
+	RefreshToken string `json:"refreshToken"`
+	ExpiresIn    int64  `json:"expiresIn"`
+}
+
+// ==================== 发送验证码 ====================
+type SendCaptchaRequest {
+	Email string `json:"email" validate:"required,email"`
+	Type  string `json:"type" validate:"required,oneof=register reset"` // register=注册, reset=重置密码
+}
+
+type SendCaptchaResponse {
+	Message string `json:"message"`
+}
+
+// ==================== 注册（带验证码） ====================
+type RegisterRequest {
+	Username string `json:"username" validate:"required,min=3,max=32"`
+	Password string `json:"password" validate:"required,min=6,max=32"`
+	Email    string `json:"email" validate:"required,email"`
+	Captcha  string `json:"captcha" validate:"required,len=6"`
+	Phone    string `json:"phone,optional"`
+	Nickname string `json:"nickname,optional"`
+}
+
+// ==================== 登录 ====================
+type LoginRequest {
+	Username string `json:"username" validate:"required"`
+	Password string `json:"password" validate:"required"`
+}
+
+// ==================== 刷新Token ====================
+type RefreshTokenRequest {
+	RefreshToken string `json:"refreshToken" validate:"required"`
+}
+
+// ==================== 用户信息 ====================
+type UserInfoResponse {
+	Id       int64  `json:"id"`
+	Username string `json:"username"`
+	Phone    string `json:"phone"`
+	Email    string `json:"email"`
+	Nickname string `json:"nickname"`
+	Avatar   string `json:"avatar"`
+	Status   int64  `json:"status"`
+}
+
+// ==================== 忘记密码 ====================
+type ForgotPasswordRequest {
+	Email       string `json:"email" validate:"required,email"`
+	Captcha     string `json:"captcha" validate:"required,len=6"`
+	NewPassword string `json:"newPassword" validate:"required,min=6,max=32"`
+}
+
+type ForgotPasswordResponse {
+	Message string `json:"message"`
+}
+
+// ==================== 修改密码（需登录） ====================
+type ChangePasswordRequest {
+	OldPassword string `json:"oldPassword" validate:"required"`
+	NewPassword string `json:"newPassword" validate:"required,min=6,max=32"`
+}
+
+type ChangePasswordResponse {
+	Message string `json:"message"`
+}
+
+// ==================== 空类型 ====================
+type Empty {}
+
+// ==================== 公开接口（无需认证） ====================
+@server (
+	prefix: /api/v1/auth
+	group:  public
+)
+service auth-api {
+	@doc "发送邮箱验证码"
+	@handler SendCaptcha
+	post /captcha/send (SendCaptchaRequest) returns (SendCaptchaResponse)
+
+	@doc "用户注册"
+	@handler Register
+	post /register (RegisterRequest) returns (TokenResponse)
+
+	@doc "用户登录"
+	@handler Login
+	post /login (LoginRequest) returns (TokenResponse)
+
+	@doc "刷新Token"
+	@handler RefreshToken
+	post /refresh (RefreshTokenRequest) returns (TokenResponse)
+
+	@doc "忘记密码"
+	@handler ForgotPassword
+	post /password/forgot (ForgotPasswordRequest) returns (ForgotPasswordResponse)
+}
+
+// ==================== 需要认证的接口 ====================
+@server (
+	prefix: /api/v1/auth
+	group:  user
+	jwt:    Auth
+)
+service auth-api {
+	@doc "退出登录"
+	@handler Logout
+	post /logout (Empty) returns (Empty)
+
+	@doc "获取用户信息"
+	@handler GetUserInfo
+	get /userinfo (Empty) returns (UserInfoResponse)
+
+	@doc "修改密码"
+	@handler ChangePassword
+	post /password/change (ChangePasswordRequest) returns (ChangePasswordResponse)
+}
+

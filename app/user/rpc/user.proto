@@ -1,0 +1,86 @@
+syntax = "proto3";
+
+package user;
+
+option go_package = "./user";
+
+// User 服务 - 供其他微服务内部调用
+service User {
+    // 获取单个用户信息
+    rpc GetUser(GetUserRequest) returns (GetUserResponse);
+    
+    // 批量获取用户信息（消息列表、群成员列表等场景）
+    rpc BatchGetUsers(BatchGetUsersRequest) returns (BatchGetUsersResponse);
+    
+    // 搜索用户（用于添加好友）
+    rpc SearchUser(SearchUserRequest) returns (SearchUserResponse);
+    
+    // 更新用户信息
+    rpc UpdateUser(UpdateUserRequest) returns (UpdateUserResponse);
+    
+    // 检查用户是否存在
+    rpc CheckUserExist(CheckUserExistRequest) returns (CheckUserExistResponse);
+}
+
+// ==================== 用户信息结构 ====================
+message UserInfo {
+    int64 id = 1;
+    string username = 2;
+    string nickname = 3;
+    string avatar = 4;
+    string phone = 5;
+    string email = 6;
+    int64 status = 7;      // 1-正常 0-禁用
+    int64 created_at = 8;  // 时间戳
+}
+
+// ==================== GetUser ====================
+message GetUserRequest {
+    int64 id = 1;
+}
+
+message GetUserResponse {
+    UserInfo user = 1;
+}
+
+// ==================== BatchGetUsers ====================
+message BatchGetUsersRequest {
+    repeated int64 ids = 1;  // 用户ID列表，最多100个
+}
+
+message BatchGetUsersResponse {
+    repeated UserInfo users = 1;
+}
+
+// ==================== SearchUser ====================
+message SearchUserRequest {
+    string keyword = 1;  // 关键词（用户名/手机/邮箱）
+    int64 page = 2;      // 页码，从1开始
+    int64 page_size = 3; // 每页数量，默认20
+}
+
+message SearchUserResponse {
+    repeated UserInfo users = 1;
+    int64 total = 2;
+}
+
+// ==================== UpdateUser ====================
+message UpdateUserRequest {
+    int64 id = 1;
+    string nickname = 2;  // 空字符串表示不更新
+    string avatar = 3;
+    string phone = 4;
+}
+
+message UpdateUserResponse {
+    UserInfo user = 1;
+}
+
+// ==================== CheckUserExist ====================
+message CheckUserExistRequest {
+    int64 id = 1;
+}
+
+message CheckUserExistResponse {
+    bool exist = 1;
+}

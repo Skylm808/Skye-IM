@@ -1,0 +1,159 @@
+syntax = "v1"
+
+info (
+	title:   "Friend API"
+	desc:    "IM系统好友服务API"
+	author:  "SkyeIM"
+	version: "1.0"
+)
+
+// ==================== 类型定义 ====================
+// 分页请求
+type PageReq {
+	Page     int64 `form:"page,default=1"`
+	PageSize int64 `form:"pageSize,default=20"`
+}
+
+// 空响应
+type Empty {}
+
+// 好友申请信息
+type FriendRequestInfo {
+	Id         int64  `json:"id"`
+	FromUserId int64  `json:"fromUserId"`
+	ToUserId   int64  `json:"toUserId"`
+	Message    string `json:"message"`
+	Status     int64  `json:"status"` // 0-待处理 1-已同意 2-已拒绝
+	CreatedAt  int64  `json:"createdAt"`
+}
+
+// 好友信息
+type FriendInfo {
+	Id        int64  `json:"id"`
+	FriendId  int64  `json:"friendId"`
+	Remark    string `json:"remark"`
+	Status    int64  `json:"status"` // 1-正常 2-拉黑
+	CreatedAt int64  `json:"createdAt"`
+}
+
+// 发送好友申请请求
+type AddFriendRequestReq {
+	ToUserId int64  `json:"toUserId"`
+	Message  string `json:"message,optional"`
+}
+
+// 发送好友申请响应
+type AddFriendRequestResp {
+	RequestId int64 `json:"requestId"`
+}
+
+// 好友申请列表响应
+type FriendRequestListResp {
+	List  []FriendRequestInfo `json:"list"`
+	Total int64               `json:"total"`
+}
+
+// 处理好友申请请求
+type HandleFriendRequestReq {
+	RequestId int64 `path:"requestId"`
+	Action    int64 `json:"action"` // 1-同意 2-拒绝
+}
+
+// 好友列表响应
+type FriendListResp {
+	List  []FriendInfo `json:"list"`
+	Total int64        `json:"total"`
+}
+
+// 删除好友请求
+type DeleteFriendReq {
+	FriendId int64 `path:"friendId"`
+}
+
+// 更新备注请求
+type UpdateRemarkReq {
+	FriendId int64  `path:"friendId"`
+	Remark   string `json:"remark"`
+}
+
+// 检查是否为好友响应
+type IsFriendResp {
+	IsFriend bool  `json:"isFriend"`
+	Status   int64 `json:"status"` // 0-非好友 1-正常 2-被拉黑
+}
+
+// 设置黑名单请求
+type SetBlacklistReq {
+	FriendId int64 `json:"friendId"`
+	IsBlack  bool  `json:"isBlack"` // true-拉黑 false-取消拉黑
+}
+
+// 获取好友ID请求
+type GetFriendReq {
+	FriendId int64 `path:"friendId"`
+}
+
+// ==================== 好友申请接口（需认证） ====================
+@server (
+	prefix: /api/v1/friend
+	group:  request
+	jwt:    Auth
+)
+service friend-api {
+	@doc "发送好友申请"
+	@handler AddFriendRequest
+	post /request (AddFriendRequestReq) returns (AddFriendRequestResp)
+
+	@doc "获取收到的好友申请列表"
+	@handler GetFriendRequestList
+	get /request/received (PageReq) returns (FriendRequestListResp)
+
+	@doc "获取发出的好友申请列表"
+	@handler GetSentRequestList
+	get /request/sent (PageReq) returns (FriendRequestListResp)
+
+	@doc "处理好友申请"
+	@handler HandleFriendRequest
+	put /request/:requestId (HandleFriendRequestReq) returns (Empty)
+}
+
+// ==================== 好友关系接口（需认证） ====================
+@server (
+	prefix: /api/v1/friend
+	group:  friend
+	jwt:    Auth
+)
+service friend-api {
+	@doc "获取好友列表"
+	@handler GetFriendList
+	get /list (PageReq) returns (FriendListResp)
+
+	@doc "删除好友"
+	@handler DeleteFriend
+	delete /:friendId (DeleteFriendReq) returns (Empty)
+
+	@doc "更新好友备注"
+	@handler UpdateFriendRemark
+	put /:friendId/remark (UpdateRemarkReq) returns (Empty)
+
+	@doc "检查是否为好友"
+	@handler IsFriend
+	get /:friendId/check (GetFriendReq) returns (IsFriendResp)
+}
+
+// ==================== 黑名单接口（需认证） ====================
+@server (
+	prefix: /api/v1/friend
+	group:  blacklist
+	jwt:    Auth
+)
+service friend-api {
+	@doc "设置黑名单"
+	@handler SetBlacklist
+	post /blacklist (SetBlacklistReq) returns (Empty)
+
+	@doc "获取黑名单列表"
+	@handler GetBlacklist
+	get /blacklist (PageReq) returns (FriendListResp)
+}
+

@@ -1,0 +1,33 @@
+Name: user-api
+Host: 0.0.0.0
+Port: 10100
+
+# MySQL 配置（复用 im_auth 数据库）
+MySQL:
+  DataSource: root:630630@tcp(127.0.0.1:3306)/im_auth?charset=utf8mb4&parseTime=True&loc=Local
+
+# Redis 缓存配置
+Cache:
+  - Host: 127.0.0.1:16379
+    Type: node
+    Pass: ""
+
+# JWT AccessToken 配置（与 Auth 服务保持一致）
+Auth:
+  AccessSecret: "Skylm-im-secret-key"
+  AccessExpire: 604800  # 7天（秒）
+
+# User RPC 服务配置
+UserRpc:
+  Etcd:
+    Hosts:
+      - 127.0.0.1:2379
+    Key: user.rpc
+  # 如果不使用 Etcd，使用直连模式
+  # Target: dns:///127.0.0.1:9001
+
+# 日志配置
+Log:
+  ServiceName: user-api
+  Mode: console
+  Level: info

@@ -1,0 +1,24 @@
+Name: user.rpc
+ListenOn: 0.0.0.0:9100
+
+# MySQL 配置（复用 im_auth 数据库）
+MySQL:
+  DataSource: root:630630@tcp(127.0.0.1:3306)/im_auth?charset=utf8mb4&parseTime=True&loc=Local
+
+# Redis 缓存配置（用于Model缓存）
+Cache:
+  - Host: 127.0.0.1:16379
+    Type: node
+    Pass: ""
+
+# 日志配置
+Log:
+  ServiceName: user-rpc
+  Mode: console
+  Level: info
+
+# Etcd配置（服务发现）
+Etcd:
+  Hosts:
+    - 127.0.0.1:2379
+  Key: user.rpc

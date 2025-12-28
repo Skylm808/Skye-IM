@@ -3,9 +3,9 @@ bin/
 *.exe
 *.dll
 
-# 配置文件（包含敏感信息）
-etc/*.yaml
-!etc/*-template.yaml
+node_modules
+package.lock.json
+static/*
 
 # 日志与缓存
 logs/

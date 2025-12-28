@@ -1,0 +1,16 @@
+Name: friend.rpc
+ListenOn: 0.0.0.0:9200
+Mode: dev
+
+MySQL:
+  DataSource: root:630630@tcp(localhost:3306)/im_auth?charset=utf8mb4&parseTime=true&loc=Local
+
+Cache:
+  - Host: 127.0.0.1:16379
+    Type: node
+    Pass: 
+
+Etcd:
+  Hosts:
+    - 127.0.0.1:2379
+  Key: friend.rpc

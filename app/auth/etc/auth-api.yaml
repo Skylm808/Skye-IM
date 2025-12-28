@@ -1,6 +1,6 @@
 Name: auth-api
 Host: 0.0.0.0
-Port: 8888
+Port: 10000
 
 # MySQL 配置
 MySQL:
@@ -8,15 +8,15 @@ MySQL:
 
 # Redis 缓存配置（用于Model缓存）
 Cache:
-  - Host: 127.0.0.1:6379
+  - Host: 127.0.0.1:16379
     Type: node
-    Pass: "123456"
+    Pass: ""
 
 # Redis 配置（用于验证码等）
 Redis:
-  Host: 127.0.0.1:6379
+  Host: 127.0.0.1:16379
   Type: node
-  Pass: "123456"
+  Pass: ""
 
 # JWT AccessToken 配置
 Auth:
@@ -34,7 +34,7 @@ Email:
   Port: 465
   Username: 1787924335@qq.com
   Password: pwvgglpbfnnhbddi
-  From: "myIM系统"
+  From: "Skye-IM系统"
 
 # 验证码配置
 Captcha:

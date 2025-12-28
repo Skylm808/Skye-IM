@@ -1,6 +1,10 @@
-go 1.21
+go 1.25.4
 
 use (
 	.
 	./app/auth
+	./app/friend/api
+	./app/friend/rpc
+	./app/user/api
+	./app/user/rpc
 )

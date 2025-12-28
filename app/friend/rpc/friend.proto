@@ -1,0 +1,163 @@
+syntax = "proto3";
+
+package friend;
+
+option go_package = "./friend";
+
+// Friend 服务 - 好友关系管理
+service Friend {
+    // ==================== 好友申请相关 ====================
+    // 发送好友申请
+    rpc AddFriendRequest(AddFriendRequestReq) returns (AddFriendRequestResp);
+    
+    // 获取收到的好友申请列表
+    rpc GetFriendRequestList(GetFriendRequestListReq) returns (GetFriendRequestListResp);
+    
+    // 获取发出的好友申请列表
+    rpc GetSentRequestList(GetSentRequestListReq) returns (GetSentRequestListResp);
+    
+    // 处理好友申请（同意/拒绝）
+    rpc HandleFriendRequest(HandleFriendRequestReq) returns (HandleFriendRequestResp);
+    
+    // ==================== 好友关系相关 ====================
+    // 获取好友列表
+    rpc GetFriendList(GetFriendListReq) returns (GetFriendListResp);
+    
+    // 删除好友
+    rpc DeleteFriend(DeleteFriendReq) returns (DeleteFriendResp);
+    
+    // 更新好友备注
+    rpc UpdateFriendRemark(UpdateFriendRemarkReq) returns (UpdateFriendRemarkResp);
+    
+    // 设置黑名单（拉黑/取消拉黑）
+    rpc SetBlacklist(SetBlacklistReq) returns (SetBlacklistResp);
+    
+    // 获取黑名单列表
+    rpc GetBlacklist(GetBlacklistReq) returns (GetBlacklistResp);
+    
+    // ==================== 辅助查询 ====================
+    // 检查是否为好友
+    rpc IsFriend(IsFriendReq) returns (IsFriendResp);
+}
+
+// ==================== 数据结构 ====================
+// 好友申请信息
+message FriendRequestInfo {
+    int64 id = 1;              // 申请ID
+    int64 from_user_id = 2;    // 发起人ID
+    int64 to_user_id = 3;      // 接收人ID
+    string message = 4;        // 验证消息
+    int64 status = 5;          // 0-待处理 1-已同意 2-已拒绝
+    int64 created_at = 6;      // 创建时间
+}
+
+// 好友信息
+message FriendInfo {
+    int64 id = 1;              // 好友关系ID
+    int64 friend_id = 2;       // 好友用户ID
+    string remark = 3;         // 备注名
+    int64 status = 4;          // 1-正常 2-拉黑
+    int64 created_at = 5;      // 成为好友时间
+}
+
+// ==================== 好友申请相关请求/响应 ====================
+message AddFriendRequestReq {
+    int64 from_user_id = 1;    // 发起人ID
+    int64 to_user_id = 2;      // 目标用户ID
+    string message = 3;        // 验证消息
+}
+
+message AddFriendRequestResp {
+    int64 request_id = 1;      // 申请ID
+}
+
+message GetFriendRequestListReq {
+    int64 user_id = 1;         // 当前用户ID
+    int64 page = 2;            // 页码
+    int64 page_size = 3;       // 每页数量
+}
+
+message GetFriendRequestListResp {
+    repeated FriendRequestInfo list = 1;
+    int64 total = 2;
+}
+
+message GetSentRequestListReq {
+    int64 user_id = 1;
+    int64 page = 2;
+    int64 page_size = 3;
+}
+
+message GetSentRequestListResp {
+    repeated FriendRequestInfo list = 1;
+    int64 total = 2;
+}
+
+message HandleFriendRequestReq {
+    int64 user_id = 1;         // 当前用户ID（接收方）
+    int64 request_id = 2;      // 申请ID
+    int64 action = 3;          // 1-同意 2-拒绝
+}
+
+message HandleFriendRequestResp {
+}
+
+// ==================== 好友关系相关请求/响应 ====================
+message GetFriendListReq {
+    int64 user_id = 1;
+    int64 page = 2;
+    int64 page_size = 3;
+}
+
+message GetFriendListResp {
+    repeated FriendInfo list = 1;
+    int64 total = 2;
+}
+
+message DeleteFriendReq {
+    int64 user_id = 1;
+    int64 friend_id = 2;
+}
+
+message DeleteFriendResp {
+}
+
+message UpdateFriendRemarkReq {
+    int64 user_id = 1;
+    int64 friend_id = 2;
+    string remark = 3;
+}
+
+message UpdateFriendRemarkResp {
+}
+
+message SetBlacklistReq {
+    int64 user_id = 1;
+    int64 friend_id = 2;
+    bool is_black = 3;         // true-拉黑 false-取消拉黑
+}
+
+message SetBlacklistResp {
+}
+
+message GetBlacklistReq {
+    int64 user_id = 1;
+    int64 page = 2;
+    int64 page_size = 3;
+}
+
+message GetBlacklistResp {
+    repeated FriendInfo list = 1;
+    int64 total = 2;
+}
+
+// ==================== 辅助查询请求/响应 ====================
+message IsFriendReq {
+    int64 user_id = 1;
+    int64 friend_id = 2;
+}
+
+message IsFriendResp {
+    bool is_friend = 1;        // 是否为好友
+    int64 status = 2;          // 好友状态 0-非好友 1-正常 2-被拉黑
+}

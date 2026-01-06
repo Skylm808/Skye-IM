@@ -5,6 +5,9 @@ use (
 	./app/auth
 	./app/friend/api
 	./app/friend/rpc
+	./app/message/api
+	./app/message/rpc
 	./app/user/api
 	./app/user/rpc
+	./app/ws
 )

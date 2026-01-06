@@ -1,0 +1,21 @@
+Name: message-api
+Host: 0.0.0.0
+Port: 10400
+
+# JWT 配置（与 Auth 服务保持一致）
+Auth:
+  AccessSecret: "Skylm-im-secret-key"
+  AccessExpire: 604800  # 7天（秒）
+
+# Message RPC 服务配置
+MessageRpc:
+  Etcd:
+    Hosts:
+      - 127.0.0.1:2379
+    Key: message.rpc
+
+# 日志配置
+Log:
+  ServiceName: message-api
+  Mode: console
+  Level: info

@@ -1,0 +1,95 @@
+syntax = "v1"
+
+info (
+	title:   "Message API"
+	desc:    "IM系统消息服务API"
+	author:  "SkyeIM"
+	version: "1.0"
+)
+
+// ==================== 类型定义 ====================
+// 消息信息
+type MessageInfo {
+	Id          int64  `json:"id"`
+	MsgId       string `json:"msgId"`
+	FromUserId  int64  `json:"fromUserId"`
+	ToUserId    int64  `json:"toUserId"`
+	Content     string `json:"content"`
+	ContentType int32  `json:"contentType"` // 1-文字 2-图片 3-文件 4-语音
+	Status      int32  `json:"status"` // 0-未读 1-已读 2-撤回
+	CreatedAt   int64  `json:"createdAt"`
+}
+
+// 获取历史消息请求
+type GetMessageHistoryReq {
+	PeerId    int64 `form:"peerId"` // 对方用户ID
+	LastMsgId int64 `form:"lastMsgId,optional"` // 最后一条消息ID（用于分页）
+	Limit     int32 `form:"limit,default=20"` // 获取条数
+}
+
+// 获取历史消息响应
+type GetMessageHistoryResp {
+	List    []MessageInfo `json:"list"`
+	HasMore bool          `json:"hasMore"`
+}
+
+// 获取未读消息数请求
+type GetUnreadCountReq {
+	PeerId int64 `form:"peerId,optional"` // 对方用户ID，为空则获取所有未读
+}
+
+// 获取未读消息数响应
+type GetUnreadCountResp {
+	Count int64 `json:"count"`
+}
+
+// 标记已读请求
+type MarkAsReadReq {
+	PeerId int64    `json:"peerId"` // 对方用户ID
+	MsgIds []string `json:"msgIds,optional"` // 消息ID列表，为空则标记所有
+}
+
+// 标记已读响应
+type MarkAsReadResp {
+	Count int64 `json:"count"` // 标记的消息数量
+}
+
+// 最近会话信息
+type ConversationInfo {
+	PeerId      int64       `json:"peerId"` // 对方用户ID
+	LastMessage MessageInfo `json:"lastMessage"` // 最后一条消息
+	UnreadCount int64       `json:"unreadCount"` // 未读消息数
+}
+
+// 获取会话列表响应
+type GetConversationsResp {
+	List []ConversationInfo `json:"list"`
+}
+
+// 空类型
+type Empty {}
+
+// ==================== 消息接口（需认证） ====================
+@server (
+	prefix: /api/v1/message
+	group:  message
+	jwt:    Auth
+)
+service message-api {
+	@doc "获取与某用户的历史消息"
+	@handler GetMessageHistory
+	get /history (GetMessageHistoryReq) returns (GetMessageHistoryResp)
+
+	@doc "获取未读消息数"
+	@handler GetUnreadCount
+	get /unread/count (GetUnreadCountReq) returns (GetUnreadCountResp)
+
+	@doc "标记消息为已读"
+	@handler MarkAsRead
+	post /read (MarkAsReadReq) returns (MarkAsReadResp)
+
+	@doc "获取会话列表（最近联系人）"
+	@handler GetConversations
+	get /conversations (Empty) returns (GetConversationsResp)
+}
+

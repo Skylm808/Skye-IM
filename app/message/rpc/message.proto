@@ -1,0 +1,96 @@
+syntax = "proto3";
+
+package message;
+
+option go_package = "./message";
+
+// Message 服务 - 消息管理
+service Message {
+    // 发送消息（存储到数据库）
+    rpc SendMessage(SendMessageReq) returns (SendMessageResp);
+    
+    // 获取历史消息列表（分页）
+    rpc GetMessageList(GetMessageListReq) returns (GetMessageListResp);
+    
+    // 标记消息为已读
+    rpc MarkAsRead(MarkAsReadReq) returns (MarkAsReadResp);
+    
+    // 获取未读消息数量
+    rpc GetUnreadCount(GetUnreadCountReq) returns (GetUnreadCountResp);
+    
+    // 获取与某用户的未读消息
+    rpc GetUnreadMessages(GetUnreadMessagesReq) returns (GetUnreadMessagesResp);
+}
+
+// ==================== 数据结构 ====================
+// 消息信息
+message MessageInfo {
+    int64 id = 1;                  // 消息数据库ID
+    string msg_id = 2;             // 消息唯一标识(UUID)
+    int64 from_user_id = 3;        // 发送者ID
+    int64 to_user_id = 4;          // 接收者ID
+    string content = 5;            // 消息内容
+    int32 content_type = 6;        // 消息类型: 1-文字 2-图片 3-文件 4-语音
+    int32 status = 7;              // 消息状态: 0-未读 1-已读 2-撤回
+    int64 created_at = 8;          // 创建时间戳
+}
+
+// ==================== 请求/响应 ====================
+// 发送消息
+message SendMessageReq {
+    string msg_id = 1;             // 消息唯一标识(由客户端生成)
+    int64 from_user_id = 2;        // 发送者ID
+    int64 to_user_id = 3;          // 接收者ID
+    string content = 4;            // 消息内容
+    int32 content_type = 5;        // 消息类型
+}
+
+message SendMessageResp {
+    int64 id = 1;                  // 消息数据库ID
+    string msg_id = 2;             // 消息唯一标识
+    int64 created_at = 3;          // 服务器时间戳
+}
+
+// 获取历史消息
+message GetMessageListReq {
+    int64 user_id = 1;             // 当前用户ID
+    int64 peer_id = 2;             // 对方用户ID
+    int64 last_msg_id = 3;         // 最后一条消息ID（用于分页）
+    int32 limit = 4;               // 获取条数
+}
+
+message GetMessageListResp {
+    repeated MessageInfo list = 1;
+    bool has_more = 2;             // 是否还有更多
+}
+
+// 标记已读
+message MarkAsReadReq {
+    int64 user_id = 1;             // 当前用户ID
+    int64 peer_id = 2;             // 对方用户ID
+    repeated string msg_ids = 3;   // 要标记的消息ID列表（为空则标记所有）
+}
+
+message MarkAsReadResp {
+    int64 count = 1;               // 标记的消息数量
+}
+
+// 获取未读消息数
+message GetUnreadCountReq {
+    int64 user_id = 1;             // 当前用户ID
+    int64 peer_id = 2;             // 对方用户ID（为0则获取所有未读）
+}
+
+message GetUnreadCountResp {
+    int64 count = 1;               // 未读消息数量
+}
+
+// 获取未读消息
+message GetUnreadMessagesReq {
+    int64 user_id = 1;             // 当前用户ID
+    int64 peer_id = 2;             // 对方用户ID
+}
+
+message GetUnreadMessagesResp {
+    repeated MessageInfo list = 1;
+}

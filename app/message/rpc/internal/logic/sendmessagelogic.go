@@ -3,9 +3,9 @@ package logic
 import (
 	"context"
 
+	"SkyeIM/app/message/model"
 	"SkyeIM/app/message/rpc/internal/svc"
 	"SkyeIM/app/message/rpc/message"
-	"SkyeIM/app/message/rpc/model"
 
 	"github.com/zeromicro/go-zero/core/logx"
 )
@@ -29,8 +29,9 @@ func (l *SendMessageLogic) SendMessage(in *message.SendMessageReq) (*message.Sen
 	// 创建消息记录
 	msg := &model.ImMessage{
 		MsgId:       in.MsgId,
-		FromUserId:  in.FromUserId,
-		ToUserId:    in.ToUserId,
+		FromUserId:  uint64(in.FromUserId),
+		ToUserId:    uint64(in.ToUserId),
+		ChatType:    1,
 		Content:     in.Content,
 		ContentType: int64(in.ContentType),
 		Status:      0, // 默认未读
@@ -51,7 +52,7 @@ func (l *SendMessageLogic) SendMessage(in *message.SendMessageReq) (*message.Sen
 	}
 
 	// 获取消息详情（包含服务器时间戳）
-	inserted, err := l.svcCtx.ImMessageModel.FindOne(l.ctx, id)
+	inserted, err := l.svcCtx.ImMessageModel.FindOne(l.ctx, uint64(id))
 	if err != nil {
 		l.Logger.Errorf("SendMessage FindOne failed: %v", err)
 		return nil, err

@@ -53,6 +53,12 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 				Path:    "/search",
 				Handler: search.SearchUserHandler(serverCtx),
 			},
+			{
+				// 全局模糊搜索（用户/群组）
+				Method:  http.MethodGet,
+				Path:    "/search/global",
+				Handler: search.GlobalSearchHandler(serverCtx),
+			},
 		},
 		rest.WithJwt(serverCtx.Config.Auth.AccessSecret),
 		rest.WithPrefix("/api/v1/user"),

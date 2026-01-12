@@ -23,11 +23,16 @@ func NewGetUnreadCountLogic(ctx context.Context, svcCtx *svc.ServiceContext) *Ge
 	}
 }
 
-// 获取未读消息数量
+// 获取私聊未读消息数量
 func (l *GetUnreadCountLogic) GetUnreadCount(in *message.GetUnreadCountReq) (*message.GetUnreadCountResp, error) {
-	count, err := l.svcCtx.ImMessageModel.GetUnreadCount(l.ctx, in.UserId, in.PeerId)
+	// 调用Model层方法
+	count, err := l.svcCtx.ImMessageModel.CountUnreadMessages(
+		l.ctx,
+		in.UserId,
+		in.PeerId,
+	)
 	if err != nil {
-		l.Logger.Errorf("GetUnreadCount failed: %v", err)
+		l.Logger.Errorf("查询未读消息数失败: %v", err)
 		return nil, err
 	}
 

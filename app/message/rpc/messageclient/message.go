@@ -14,29 +14,49 @@ import (
 )
 
 type (
-	GetMessageListReq     = message.GetMessageListReq
-	GetMessageListResp    = message.GetMessageListResp
-	GetUnreadCountReq     = message.GetUnreadCountReq
-	GetUnreadCountResp    = message.GetUnreadCountResp
-	GetUnreadMessagesReq  = message.GetUnreadMessagesReq
-	GetUnreadMessagesResp = message.GetUnreadMessagesResp
-	MarkAsReadReq         = message.MarkAsReadReq
-	MarkAsReadResp        = message.MarkAsReadResp
-	MessageInfo           = message.MessageInfo
-	SendMessageReq        = message.SendMessageReq
-	SendMessageResp       = message.SendMessageResp
+	GetAtMeMessagesReq        = message.GetAtMeMessagesReq
+	GetAtMeMessagesResp       = message.GetAtMeMessagesResp
+	GetGroupMessageListReq    = message.GetGroupMessageListReq
+	GetGroupMessageListResp   = message.GetGroupMessageListResp
+	GetGroupMessagesBySeqReq  = message.GetGroupMessagesBySeqReq
+	GetGroupMessagesBySeqResp = message.GetGroupMessagesBySeqResp
+	GetMessageListReq         = message.GetMessageListReq
+	GetMessageListResp        = message.GetMessageListResp
+	GetUnreadCountReq         = message.GetUnreadCountReq
+	GetUnreadCountResp        = message.GetUnreadCountResp
+	GetUnreadMessagesReq      = message.GetUnreadMessagesReq
+	GetUnreadMessagesResp     = message.GetUnreadMessagesResp
+	MarkAsReadReq             = message.MarkAsReadReq
+	MarkAsReadResp            = message.MarkAsReadResp
+	MessageInfo               = message.MessageInfo
+	SearchMessageReq          = message.SearchMessageReq
+	SearchMessageResp         = message.SearchMessageResp
+	SendGroupMessageReq       = message.SendGroupMessageReq
+	SendGroupMessageResp      = message.SendGroupMessageResp
+	SendMessageReq            = message.SendMessageReq
+	SendMessageResp           = message.SendMessageResp
 
 	Message interface {
-		// 发送消息（存储到数据库）
+		// 发送私聊消息（存储到数据库）
 		SendMessage(ctx context.Context, in *SendMessageReq, opts ...grpc.CallOption) (*SendMessageResp, error)
-		// 获取历史消息列表（分页）
+		// 发送群聊消息
+		SendGroupMessage(ctx context.Context, in *SendGroupMessageReq, opts ...grpc.CallOption) (*SendGroupMessageResp, error)
+		// 获取私聊历史消息列表（分页）
 		GetMessageList(ctx context.Context, in *GetMessageListReq, opts ...grpc.CallOption) (*GetMessageListResp, error)
-		// 标记消息为已读
+		// 获取群聊历史消息列表（分页）
+		GetGroupMessageList(ctx context.Context, in *GetGroupMessageListReq, opts ...grpc.CallOption) (*GetGroupMessageListResp, error)
+		// 标记私聊消息为已读
 		MarkAsRead(ctx context.Context, in *MarkAsReadReq, opts ...grpc.CallOption) (*MarkAsReadResp, error)
-		// 获取未读消息数量
+		// 获取私聊未读消息数量
 		GetUnreadCount(ctx context.Context, in *GetUnreadCountReq, opts ...grpc.CallOption) (*GetUnreadCountResp, error)
-		// 获取与某用户的未读消息
+		// 获取私聊未读消息列表
 		GetUnreadMessages(ctx context.Context, in *GetUnreadMessagesReq, opts ...grpc.CallOption) (*GetUnreadMessagesResp, error)
+		// 获取大于指定Seq的群聊消息 (用于消息同步)
+		GetGroupMessagesBySeq(ctx context.Context, in *GetGroupMessagesBySeqReq, opts ...grpc.CallOption) (*GetGroupMessagesBySeqResp, error)
+		// 模糊搜索消息内容
+		SearchMessage(ctx context.Context, in *SearchMessageReq, opts ...grpc.CallOption) (*SearchMessageResp, error)
+		// 获取@我的消息列表
+		GetAtMeMessages(ctx context.Context, in *GetAtMeMessagesReq, opts ...grpc.CallOption) (*GetAtMeMessagesResp, error)
 	}
 
 	defaultMessage struct {
@@ -50,32 +70,62 @@ func NewMessage(cli zrpc.Client) Message {
 	}
 }
 
-// 发送消息（存储到数据库）
+// 发送私聊消息（存储到数据库）
 func (m *defaultMessage) SendMessage(ctx context.Context, in *SendMessageReq, opts ...grpc.CallOption) (*SendMessageResp, error) {
 	client := message.NewMessageClient(m.cli.Conn())
 	return client.SendMessage(ctx, in, opts...)
 }
 
-// 获取历史消息列表（分页）
+// 发送群聊消息
+func (m *defaultMessage) SendGroupMessage(ctx context.Context, in *SendGroupMessageReq, opts ...grpc.CallOption) (*SendGroupMessageResp, error) {
+	client := message.NewMessageClient(m.cli.Conn())
+	return client.SendGroupMessage(ctx, in, opts...)
+}
+
+// 获取私聊历史消息列表（分页）
 func (m *defaultMessage) GetMessageList(ctx context.Context, in *GetMessageListReq, opts ...grpc.CallOption) (*GetMessageListResp, error) {
 	client := message.NewMessageClient(m.cli.Conn())
 	return client.GetMessageList(ctx, in, opts...)
 }
 
-// 标记消息为已读
+// 获取群聊历史消息列表（分页）
+func (m *defaultMessage) GetGroupMessageList(ctx context.Context, in *GetGroupMessageListReq, opts ...grpc.CallOption) (*GetGroupMessageListResp, error) {
+	client := message.NewMessageClient(m.cli.Conn())
+	return client.GetGroupMessageList(ctx, in, opts...)
+}
+
+// 标记私聊消息为已读
 func (m *defaultMessage) MarkAsRead(ctx context.Context, in *MarkAsReadReq, opts ...grpc.CallOption) (*MarkAsReadResp, error) {
 	client := message.NewMessageClient(m.cli.Conn())
 	return client.MarkAsRead(ctx, in, opts...)
 }
 
-// 获取未读消息数量
+// 获取私聊未读消息数量
 func (m *defaultMessage) GetUnreadCount(ctx context.Context, in *GetUnreadCountReq, opts ...grpc.CallOption) (*GetUnreadCountResp, error) {
 	client := message.NewMessageClient(m.cli.Conn())
 	return client.GetUnreadCount(ctx, in, opts...)
 }
 
-// 获取与某用户的未读消息
+// 获取私聊未读消息列表
 func (m *defaultMessage) GetUnreadMessages(ctx context.Context, in *GetUnreadMessagesReq, opts ...grpc.CallOption) (*GetUnreadMessagesResp, error) {
 	client := message.NewMessageClient(m.cli.Conn())
 	return client.GetUnreadMessages(ctx, in, opts...)
+}
+
+// 获取大于指定Seq的群聊消息 (用于消息同步)
+func (m *defaultMessage) GetGroupMessagesBySeq(ctx context.Context, in *GetGroupMessagesBySeqReq, opts ...grpc.CallOption) (*GetGroupMessagesBySeqResp, error) {
+	client := message.NewMessageClient(m.cli.Conn())
+	return client.GetGroupMessagesBySeq(ctx, in, opts...)
+}
+
+// 模糊搜索消息内容
+func (m *defaultMessage) SearchMessage(ctx context.Context, in *SearchMessageReq, opts ...grpc.CallOption) (*SearchMessageResp, error) {
+	client := message.NewMessageClient(m.cli.Conn())
+	return client.SearchMessage(ctx, in, opts...)
+}
+
+// 获取@我的消息列表
+func (m *defaultMessage) GetAtMeMessages(ctx context.Context, in *GetAtMeMessagesReq, opts ...grpc.CallOption) (*GetAtMeMessagesResp, error) {
+	client := message.NewMessageClient(m.cli.Conn())
+	return client.GetAtMeMessages(ctx, in, opts...)
 }

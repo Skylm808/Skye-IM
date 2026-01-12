@@ -15,4 +15,6 @@ type Config struct {
 		AccessExpire int64
 	}
 	MessageRpc zrpc.RpcClientConf
+	GroupRpc   zrpc.RpcClientConf `json:",optional"`
+	FriendRpc  zrpc.RpcClientConf `json:",optional"`
 }

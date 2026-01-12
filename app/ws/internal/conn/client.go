@@ -1,14 +1,12 @@
 package conn
 
 import (
-	"context"
 	"encoding/json"
+	"sync"
 	"time"
 
-	"SkyeIM/app/message/rpc/message"
 	"SkyeIM/app/ws/internal/svc"
 
-	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 	"github.com/zeromicro/go-zero/core/logx"
 )
@@ -34,29 +32,9 @@ type Client struct {
 	conn   *websocket.Conn
 	send   chan interface{}
 	svcCtx *svc.ServiceContext
-}
 
-// Message WebSocket消息格式
-type Message struct {
-	Type string          `json:"type"`
-	Data json.RawMessage `json:"data"`
-}
-
-// ChatMessage 聊天消息数据
-type ChatMessage struct {
-	MsgId       string `json:"msgId,omitempty"`
-	FromUserId  int64  `json:"fromUserId"`
-	ToUserId    int64  `json:"toUserId"`
-	Content     string `json:"content"`
-	ContentType int32  `json:"contentType"`
-	CreatedAt   int64  `json:"createdAt,omitempty"`
-}
-
-// AckMessage 确认消息
-type AckMessage struct {
-	MsgId     string `json:"msgId"`
-	Status    string `json:"status"` // sent, delivered, read
-	Timestamp int64  `json:"timestamp"`
+	done      chan struct{}
+	closeOnce sync.Once
 }
 
 // NewClient 创建新的客户端
@@ -67,7 +45,18 @@ func NewClient(hub *Hub, conn *websocket.Conn, userId int64, svcCtx *svc.Service
 		conn:   conn,
 		send:   make(chan interface{}, 256),
 		svcCtx: svcCtx,
+		done:   make(chan struct{}),
 	}
+}
+
+// Close 关闭连接并停止读写协程（幂等）
+func (c *Client) Close() {
+	c.closeOnce.Do(func() {
+		close(c.done)
+		if c.conn != nil {
+			_ = c.conn.Close()
+		}
+	})
 }
 
 // SendChannel 返回发送通道（用于外部推送消息）
@@ -79,7 +68,7 @@ func (c *Client) SendChannel() chan interface{} {
 func (c *Client) ReadPump() {
 	defer func() {
 		c.Hub.Unregister(c)
-		c.conn.Close()
+		c.Close()
 	}()
 
 	c.conn.SetReadLimit(maxMessageSize)
@@ -115,18 +104,17 @@ func (c *Client) WritePump() {
 	ticker := time.NewTicker(pingPeriod)
 	defer func() {
 		ticker.Stop()
-		c.conn.Close()
+		c.Close()
 	}()
 
 	for {
 		select {
+		case <-c.done:
+			return
+
 		case message, ok := <-c.send:
 			c.conn.SetWriteDeadline(time.Now().Add(writeWait))
-			if !ok {
-				// Hub 关闭了通道
-				c.conn.WriteMessage(websocket.CloseMessage, []byte{})
-				return
-			}
+			_ = ok
 
 			if err := c.conn.WriteJSON(message); err != nil {
 				logx.Errorf("[Client] User %d write error: %v", c.UserId, err)
@@ -142,7 +130,7 @@ func (c *Client) WritePump() {
 	}
 }
 
-// handleMessage 处理收到的消息
+// handleMessage 处理收到的消息（路由到具体处理函数）
 func (c *Client) handleMessage(msg *Message) {
 	switch msg.Type {
 	case "ping":
@@ -150,8 +138,12 @@ func (c *Client) handleMessage(msg *Message) {
 		c.send <- &Message{Type: "pong", Data: nil}
 
 	case "chat":
-		// 处理聊天消息
+		// 处理私聊消息
 		c.handleChatMessage(msg.Data)
+
+	case "group_chat":
+		// 处理群聊消息
+		c.handleGroupChatMessage(msg.Data)
 
 	case "ack":
 		// 处理消息确认
@@ -164,148 +156,4 @@ func (c *Client) handleMessage(msg *Message) {
 	default:
 		logx.Infof("[Client] User %d unknown message type: %s", c.UserId, msg.Type)
 	}
-}
-
-// handleChatMessage 处理聊天消息
-func (c *Client) handleChatMessage(data json.RawMessage) {
-	var chatMsg ChatMessage
-	if err := json.Unmarshal(data, &chatMsg); err != nil {
-		logx.Errorf("[Client] User %d parse chat message error: %v", c.UserId, err)
-		return
-	}
-
-	// 设置发送者ID
-	chatMsg.FromUserId = c.UserId
-
-	// 生成消息ID（如果客户端未提供）
-	if chatMsg.MsgId == "" {
-		chatMsg.MsgId = uuid.New().String()
-	}
-
-	// 默认消息类型为文字
-	if chatMsg.ContentType == 0 {
-		chatMsg.ContentType = 1
-	}
-
-	// 存储消息到数据库
-	ctx := context.Background()
-	resp, err := c.svcCtx.MessageRpc.SendMessage(ctx, &message.SendMessageReq{
-		MsgId:       chatMsg.MsgId,
-		FromUserId:  chatMsg.FromUserId,
-		ToUserId:    chatMsg.ToUserId,
-		Content:     chatMsg.Content,
-		ContentType: chatMsg.ContentType,
-	})
-
-	if err != nil {
-		logx.Errorf("[Client] User %d send message failed: %v", c.UserId, err)
-		// 发送错误回复给发送者
-		c.send <- &Message{
-			Type: "error",
-			Data: mustMarshal(map[string]interface{}{
-				"msgId":   chatMsg.MsgId,
-				"message": "发送失败",
-			}),
-		}
-		return
-	}
-
-	// 更新时间戳
-	chatMsg.CreatedAt = resp.CreatedAt
-
-	// 发送 ACK 给发送者（非阻塞）
-	ackMsg := &Message{
-		Type: "ack",
-		Data: mustMarshal(&AckMessage{
-			MsgId:     chatMsg.MsgId,
-			Status:    "sent",
-			Timestamp: resp.CreatedAt,
-		}),
-	}
-
-	select {
-	case c.send <- ackMsg:
-		logx.Infof("[Client] Sent ACK (sent) to user %d for message %s", c.UserId, chatMsg.MsgId)
-	default:
-		logx.Errorf("[Client] Failed to send ACK to user %d: send buffer full", c.UserId)
-	}
-
-	// 构造发送给接收者的消息
-	receiverMsg := &Message{
-		Type: "chat",
-		Data: mustMarshal(&chatMsg),
-	}
-
-	// 尝试发送给接收者
-	if c.Hub.SendToUser(chatMsg.ToUserId, receiverMsg) {
-		// 接收者在线，发送已送达确认给发送者
-		deliveredAck := &Message{
-			Type: "ack",
-			Data: mustMarshal(&AckMessage{
-				MsgId:     chatMsg.MsgId,
-				Status:    "delivered",
-				Timestamp: time.Now().Unix(),
-			}),
-		}
-
-		select {
-		case c.send <- deliveredAck:
-			logx.Infof("[Client] Sent ACK (delivered) to user %d for message %s", c.UserId, chatMsg.MsgId)
-		default:
-			logx.Errorf("[Client] Failed to send delivered ACK to user %d: send buffer full", c.UserId)
-		}
-	} else {
-		logx.Infof("[Client] User %d is offline, message %s stored for later delivery", chatMsg.ToUserId, chatMsg.MsgId)
-	}
-	// 如果接收者不在线，消息已存储在数据库，下次上线时会推送
-}
-
-// handleAckMessage 处理消息确认
-func (c *Client) handleAckMessage(data json.RawMessage) {
-	var ack AckMessage
-	if err := json.Unmarshal(data, &ack); err != nil {
-		logx.Errorf("[Client] User %d parse ack message error: %v", c.UserId, err)
-		return
-	}
-	logx.Infof("[Client] User %d ack message: %s, status: %s", c.UserId, ack.MsgId, ack.Status)
-}
-
-// handleReadMessage 处理已读回执
-func (c *Client) handleReadMessage(data json.RawMessage) {
-	var readMsg struct {
-		PeerId int64    `json:"peerId"`
-		MsgIds []string `json:"msgIds,omitempty"`
-	}
-	if err := json.Unmarshal(data, &readMsg); err != nil {
-		logx.Errorf("[Client] User %d parse read message error: %v", c.UserId, err)
-		return
-	}
-
-	// 标记消息为已读
-	ctx := context.Background()
-	_, err := c.svcCtx.MessageRpc.MarkAsRead(ctx, &message.MarkAsReadReq{
-		UserId: c.UserId,
-		PeerId: readMsg.PeerId,
-		MsgIds: readMsg.MsgIds,
-	})
-
-	if err != nil {
-		logx.Errorf("[Client] User %d mark as read failed: %v", c.UserId, err)
-		return
-	}
-
-	// 通知对方消息已读
-	c.Hub.SendToUser(readMsg.PeerId, &Message{
-		Type: "read",
-		Data: mustMarshal(map[string]interface{}{
-			"userId":    c.UserId,
-			"timestamp": time.Now().Unix(),
-		}),
-	})
-}
-
-// mustMarshal JSON序列化，忽略错误
-func mustMarshal(v interface{}) json.RawMessage {
-	data, _ := json.Marshal(v)
-	return data
 }

@@ -14,6 +14,9 @@ type UserInfo {
 	Username  string `json:"username"`
 	Nickname  string `json:"nickname"`
 	Avatar    string `json:"avatar"`
+	Signature string `json:"signature"`
+	Gender    int64  `json:"gender"`
+	Region    string `json:"region"`
 	Phone     string `json:"phone"`
 	Email     string `json:"email"`
 	Status    int64  `json:"status"`
@@ -21,15 +24,19 @@ type UserInfo {
 }
 
 // 获取用户资料响应
+// 获取用户资料响应
 type ProfileResponse {
 	User UserInfo `json:"user"`
 }
 
 // 更新用户资料请求
 type UpdateProfileRequest {
-	Nickname string `json:"nickname,optional"`
-	Avatar   string `json:"avatar,optional"`
-	Phone    string `json:"phone,optional"`
+	Nickname  string `json:"nickname,optional"`
+	Avatar    string `json:"avatar,optional"`
+	Signature string `json:"signature,optional"`
+	Gender    int64  `json:"gender,optional"`
+	Region    string `json:"region,optional"`
+	Phone     string `json:"phone,optional"`
 }
 
 // 更新头像请求
@@ -46,6 +53,24 @@ type SearchUserRequest {
 type SearchUserResponse {
 	Users []UserInfo `json:"users"`
 	Total int64      `json:"total"`
+}
+
+// 全局模糊搜索请求
+type GlobalSearchRequest {
+	Keyword string `form:"keyword"`
+}
+
+type GlobalSearchResponse {
+	Users  []UserInfo  `json:"users"`
+	Groups []GroupInfo `json:"groups"` // 需同步导入 Group 类型，或者在这里定义一个简版
+}
+
+// 对应群组简略信息
+type GroupInfo {
+	GroupId     string `json:"groupId"`
+	Name        string `json:"name"`
+	Avatar      string `json:"avatar"`
+	Description string `json:"description"`
 }
 
 // 获取指定用户请求
@@ -86,6 +111,10 @@ service user-api {
 	@doc "搜索用户（用于添加好友）"
 	@handler SearchUser
 	get /search (SearchUserRequest) returns (SearchUserResponse)
+
+	@doc "全局模糊搜索（用户/群组）"
+	@handler GlobalSearch
+	get /search/global (GlobalSearchRequest) returns (GlobalSearchResponse)
 
 	@doc "获取指定用户信息"
 	@handler GetUser

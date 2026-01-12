@@ -1,3 +1,5 @@
+
+# Message RPC 服务配置
 Name: message-api
 Host: 0.0.0.0
 Port: 10400
@@ -13,6 +15,20 @@ MessageRpc:
     Hosts:
       - 127.0.0.1:2379
     Key: message.rpc
+
+# Group RPC 配置（用于群聊相关操作）
+GroupRpc:
+  Etcd:
+    Hosts:
+      - 127.0.0.1:2379
+    Key: group-rpc
+
+# Friend RPC 配置（用于好友列表获取）
+FriendRpc:
+  Etcd:
+    Hosts:
+      - 127.0.0.1:2379
+    Key: friend-rpc
 
 # 日志配置
 Log:

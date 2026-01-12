@@ -57,10 +57,13 @@ func (l *GetMessageHistoryLogic) GetMessageHistory(req *types.GetMessageHistoryR
 			MsgId:       msg.MsgId,
 			FromUserId:  msg.FromUserId,
 			ToUserId:    msg.ToUserId,
+			ChatType:    msg.ChatType,
+			GroupId:     msg.GroupId,
 			Content:     msg.Content,
 			ContentType: msg.ContentType,
 			Status:      msg.Status,
 			CreatedAt:   msg.CreatedAt,
+			Seq:         msg.Seq,
 		})
 	}
 

@@ -32,6 +32,9 @@ message UserInfo {
     string email = 6;
     int64 status = 7;      // 1-正常 0-禁用
     int64 created_at = 8;  // 时间戳
+    string signature = 9;
+    int64 gender = 10;
+    string region = 11;
 }
 
 // ==================== GetUser ====================
@@ -69,6 +72,9 @@ message UpdateUserRequest {
     int64 id = 1;
     string nickname = 2;  // 空字符串表示不更新
     string avatar = 3;
+    string signature = 5;
+    int64 gender = 6;
+    string region = 7;
     string phone = 4;
 }
 

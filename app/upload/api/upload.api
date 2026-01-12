@@ -1,0 +1,54 @@
+syntax = "v1"
+
+info (
+	title:   "Upload API"
+	desc:    "文件上传服务API"
+	author:  "SkyeIM"
+	version: "1.0"
+)
+
+// ==================== 类型定义 ====================
+// 上传图片响应
+type UploadImageResp {
+	Url       string `json:"url"` // 图片URL
+	Thumbnail string `json:"thumbnail"` // 缩略图URL（可选）
+	Width     int32  `json:"width"` // 图片宽度
+	Height    int32  `json:"height"` // 图片高度
+	Size      int64  `json:"size"` // 文件大小（字节）
+}
+
+// 上传文件响应
+type UploadFileResp {
+	Url      string `json:"url"` // 文件URL
+	Filename string `json:"filename"` // 文件名
+	Size     int64  `json:"size"` // 文件大小（字节）
+	MimeType string `json:"mimeType"` // MIME类型
+}
+
+// 上传头像响应
+type UploadAvatarResp {
+	Url       string `json:"url"` // 头像URL
+	Thumbnail string `json:"thumbnail"` // 缩略图URL
+}
+
+// ==================== 接口定义（需认证） ====================
+@server (
+	prefix:   /api/v1/upload
+	group:    upload
+	jwt:      Auth
+	maxBytes: 10485760 // 10MB
+)
+service upload-api {
+	@doc "上传图片（聊天/朋友圈）"
+	@handler UploadImage
+	post /image returns (UploadImageResp)
+
+	@doc "上传文件（文档/视频等）"
+	@handler UploadFile
+	post /file returns (UploadFileResp)
+
+	@doc "上传头像（用户/群组）"
+	@handler UploadAvatar
+	post /avatar returns (UploadAvatarResp)
+}
+

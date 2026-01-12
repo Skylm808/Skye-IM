@@ -23,38 +23,41 @@ func NewGetMessageListLogic(ctx context.Context, svcCtx *svc.ServiceContext) *Ge
 	}
 }
 
-// 获取历史消息列表（分页）
+// 获取私聊历史消息列表
 func (l *GetMessageListLogic) GetMessageList(in *message.GetMessageListReq) (*message.GetMessageListResp, error) {
-	// 默认每页20条
-	limit := int(in.Limit)
-	if limit <= 0 {
+	limit := in.Limit
+	if limit <= 0 || limit > 100 {
 		limit = 20
 	}
-	if limit > 100 {
-		limit = 100
-	}
 
-	// 查询消息列表（多取一条用于判断是否有更多）
-	list, err := l.svcCtx.ImMessageModel.GetMessageList(l.ctx, in.UserId, in.PeerId, in.LastMsgId, limit+1)
+	// 调用Model层方法
+	messages, err := l.svcCtx.ImMessageModel.FindPrivateMessageList(
+		l.ctx,
+		in.UserId,
+		in.PeerId,
+		in.LastMsgId,
+		int64(limit)+1,
+	)
 	if err != nil {
-		l.Logger.Errorf("GetMessageList failed: %v", err)
+		l.Logger.Errorf("查询私聊消息失败: %v", err)
 		return nil, err
 	}
 
-	// 判断是否有更多
-	hasMore := len(list) > limit
-	if hasMore {
-		list = list[:limit]
+	hasMore := false
+	if int64(len(messages)) > int64(limit) {
+		hasMore = true
+		messages = messages[:limit]
 	}
 
-	// 转换为响应格式
-	respList := make([]*message.MessageInfo, 0, len(list))
-	for _, msg := range list {
-		respList = append(respList, &message.MessageInfo{
-			Id:          msg.Id,
+	var list []*message.MessageInfo
+	for _, msg := range messages {
+		list = append(list, &message.MessageInfo{
+			Id:          int64(msg.Id),
 			MsgId:       msg.MsgId,
-			FromUserId:  msg.FromUserId,
-			ToUserId:    msg.ToUserId,
+			FromUserId:  int64(msg.FromUserId),
+			ToUserId:    int64(msg.ToUserId),
+			ChatType:    int32(msg.ChatType),
+			GroupId:     msg.GroupId.String,
 			Content:     msg.Content,
 			ContentType: int32(msg.ContentType),
 			Status:      int32(msg.Status),
@@ -63,7 +66,7 @@ func (l *GetMessageListLogic) GetMessageList(in *message.GetMessageListReq) (*me
 	}
 
 	return &message.GetMessageListResp{
-		List:    respList,
+		List:    list,
 		HasMore: hasMore,
 	}, nil
 }

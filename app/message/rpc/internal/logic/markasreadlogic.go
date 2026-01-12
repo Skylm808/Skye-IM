@@ -23,11 +23,17 @@ func NewMarkAsReadLogic(ctx context.Context, svcCtx *svc.ServiceContext) *MarkAs
 	}
 }
 
-// 标记消息为已读
+// 标记私聊消息为已读
 func (l *MarkAsReadLogic) MarkAsRead(in *message.MarkAsReadReq) (*message.MarkAsReadResp, error) {
-	count, err := l.svcCtx.ImMessageModel.MarkAsRead(l.ctx, in.UserId, in.PeerId, in.MsgIds)
+	// 调用Model层方法
+	count, err := l.svcCtx.ImMessageModel.MarkMessagesAsRead(
+		l.ctx,
+		in.UserId,
+		in.PeerId,
+		in.MsgIds,
+	)
 	if err != nil {
-		l.Logger.Errorf("MarkAsRead failed: %v", err)
+		l.Logger.Errorf("标记已读失败: %v", err)
 		return nil, err
 	}
 

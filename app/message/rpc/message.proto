@@ -6,20 +6,46 @@ option go_package = "./message";
 
 // Message 服务 - 消息管理
 service Message {
-    // 发送消息（存储到数据库）
+    // 发送私聊消息（存储到数据库）
     rpc SendMessage(SendMessageReq) returns (SendMessageResp);
     
-    // 获取历史消息列表（分页）
+    // 发送群聊消息
+    rpc SendGroupMessage(SendGroupMessageReq) returns (SendGroupMessageResp);
+    
+    // 获取私聊历史消息列表（分页）
     rpc GetMessageList(GetMessageListReq) returns (GetMessageListResp);
     
-    // 标记消息为已读
+    // 获取群聊历史消息列表（分页）
+    rpc GetGroupMessageList(GetGroupMessageListReq) returns (GetGroupMessageListResp);
+    
+    // 标记私聊消息为已读
     rpc MarkAsRead(MarkAsReadReq) returns (MarkAsReadResp);
     
-    // 获取未读消息数量
+    // 获取私聊未读消息数量
     rpc GetUnreadCount(GetUnreadCountReq) returns (GetUnreadCountResp);
     
-    // 获取与某用户的未读消息
+    // 获取私聊未读消息列表
     rpc GetUnreadMessages(GetUnreadMessagesReq) returns (GetUnreadMessagesResp);
+    
+    // 获取大于指定Seq的群聊消息 (用于消息同步)
+    rpc GetGroupMessagesBySeq(GetGroupMessagesBySeqReq) returns (GetGroupMessagesBySeqResp);
+
+    // 模糊搜索消息内容
+    rpc SearchMessage(SearchMessageReq) returns (SearchMessageResp);
+    
+    // 获取@我的消息列表
+    rpc GetAtMeMessages(GetAtMeMessagesReq) returns (GetAtMeMessagesResp);
+}
+
+// ... 已有内容 ...
+
+message SearchMessageReq {
+    int64 user_id = 1;
+    string keyword = 2;
+}
+
+message SearchMessageResp {
+    repeated MessageInfo list = 1;
 }
 
 // ==================== 数据结构 ====================
@@ -28,15 +54,19 @@ message MessageInfo {
     int64 id = 1;                  // 消息数据库ID
     string msg_id = 2;             // 消息唯一标识(UUID)
     int64 from_user_id = 3;        // 发送者ID
-    int64 to_user_id = 4;          // 接收者ID
+    int64 to_user_id = 4;          // 接收者ID（私聊时使用）
+    int32 chat_type = 9;           // 聊天类型: 1-私聊 2-群聊
+    string group_id = 10;          // 群组ID（群聊时使用）
     string content = 5;            // 消息内容
     int32 content_type = 6;        // 消息类型: 1-文字 2-图片 3-文件 4-语音
     int32 status = 7;              // 消息状态: 0-未读 1-已读 2-撤回
     int64 created_at = 8;          // 创建时间戳
+    uint64 seq = 11;               // 消息序列号
+    repeated int64 at_user_ids = 12;  // 被@的用户ID列表，-1表示@全体
 }
 
-// ==================== 请求/响应 ====================
-// 发送消息
+// ==================== 私聊消息 ====================
+// 发送私聊消息
 message SendMessageReq {
     string msg_id = 1;             // 消息唯一标识(由客户端生成)
     int64 from_user_id = 2;        // 发送者ID
@@ -51,7 +81,7 @@ message SendMessageResp {
     int64 created_at = 3;          // 服务器时间戳
 }
 
-// 获取历史消息
+// 获取私聊历史消息
 message GetMessageListReq {
     int64 user_id = 1;             // 当前用户ID
     int64 peer_id = 2;             // 对方用户ID
@@ -93,4 +123,60 @@ message GetUnreadMessagesReq {
 
 message GetUnreadMessagesResp {
     repeated MessageInfo list = 1;
+}
+
+// ==================== 群聊消息 ====================
+// 发送群聊消息
+message SendGroupMessageReq {
+    string msg_id = 1;             // 消息唯一标识(由客户端生成)
+    int64 from_user_id = 2;        // 发送者ID
+    string group_id = 3;           // 群组ID
+    string content = 4;            // 消息内容
+    int32 content_type = 5;        // 消息类型
+    repeated int64 at_user_ids = 6;  // 被@的用户ID列表，-1表示@全体
+}
+
+message SendGroupMessageResp {
+    int64 id = 1;                  // 消息数据库ID
+    string msg_id = 2;             // 消息唯一标识
+    int64 created_at = 3;          // 服务器时间戳
+    uint64 seq = 4;                // 消息序列号
+}
+
+// 获取群聊历史消息
+message GetGroupMessageListReq {
+    int64 user_id = 1;             // 当前用户ID（用于权限验证）
+    string group_id = 2;           // 群组ID
+    int64 last_msg_id = 3;         // 最后一条消息ID（用于分页）
+    int32 limit = 4;               // 获取条数
+}
+
+message GetGroupMessageListResp {
+    repeated MessageInfo list = 1;
+    bool has_more = 2;             // 是否还有更多
+}
+
+// 获取大于指定Seq的群聊消息
+message GetGroupMessagesBySeqReq {
+    int64 user_id = 1;             // 当前用户ID
+    string group_id = 2;           // 群组ID
+    uint64 seq = 3;                // 最小Seq(不包含)
+}
+
+message GetGroupMessagesBySeqResp {
+    repeated MessageInfo list = 1;
+}
+
+// ==================== @消息功能 ====================
+// 获取@我的消息
+message GetAtMeMessagesReq {
+    int64 user_id = 1;             // 当前用户ID
+    string group_id = 2;           // 群组ID（可选，为空则查询所有群）
+    int64 last_msg_id = 3;         // 最后一条消息ID（用于分页）
+    int32 limit = 4;               // 获取条数
+}
+
+message GetAtMeMessagesResp {
+    repeated MessageInfo list = 1;
+    bool has_more = 2;             // 是否还有更多
 }

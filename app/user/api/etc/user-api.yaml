@@ -2,6 +2,12 @@ Name: user-api
 Host: 0.0.0.0
 Port: 10100
 
+# Etcd 服务注册（让Gateway可以发现此服务）
+Etcd:
+  Hosts:
+    - 127.0.0.1:2379
+  Key: user-api
+
 # MySQL 配置（复用 im_auth 数据库）
 MySQL:
   DataSource: root:630630@tcp(127.0.0.1:3306)/im_auth?charset=utf8mb4&parseTime=True&loc=Local

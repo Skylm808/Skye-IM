@@ -25,20 +25,26 @@ func NewGetUnreadMessagesLogic(ctx context.Context, svcCtx *svc.ServiceContext) 
 
 // 获取与某用户的未读消息
 func (l *GetUnreadMessagesLogic) GetUnreadMessages(in *message.GetUnreadMessagesReq) (*message.GetUnreadMessagesResp, error) {
-	list, err := l.svcCtx.ImMessageModel.GetUnreadMessages(l.ctx, in.UserId, in.PeerId)
+	// 调用Model层方法
+	messages, err := l.svcCtx.ImMessageModel.FindUnreadMessages(
+		l.ctx,
+		in.UserId,
+		in.PeerId,
+	)
 	if err != nil {
-		l.Logger.Errorf("GetUnreadMessages failed: %v", err)
+		l.Logger.Errorf("查询未读消息失败: %v", err)
 		return nil, err
 	}
 
-	// 转换为响应格式
-	respList := make([]*message.MessageInfo, 0, len(list))
-	for _, msg := range list {
-		respList = append(respList, &message.MessageInfo{
-			Id:          msg.Id,
+	var list []*message.MessageInfo
+	for _, msg := range messages {
+		list = append(list, &message.MessageInfo{
+			Id:          int64(msg.Id),
 			MsgId:       msg.MsgId,
-			FromUserId:  msg.FromUserId,
-			ToUserId:    msg.ToUserId,
+			FromUserId:  int64(msg.FromUserId),
+			ToUserId:    int64(msg.ToUserId),
+			ChatType:    int32(msg.ChatType),
+			GroupId:     msg.GroupId.String,
 			Content:     msg.Content,
 			ContentType: int32(msg.ContentType),
 			Status:      int32(msg.Status),
@@ -47,6 +53,6 @@ func (l *GetUnreadMessagesLogic) GetUnreadMessages(in *message.GetUnreadMessages
 	}
 
 	return &message.GetUnreadMessagesResp{
-		List: respList,
+		List: list,
 	}, nil
 }

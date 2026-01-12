@@ -12,8 +12,40 @@ type ConversationInfo struct {
 type Empty struct {
 }
 
+type GetAtMeMessagesReq struct {
+	GroupId   string `form:"groupId,optional"`   // 群组ID（可选，为空则查询所有群）
+	LastMsgId int64  `form:"lastMsgId,optional"` // 最后一条消息ID（用于分页）
+	Limit     int32  `form:"limit,default=20"`   // 获取条数
+}
+
+type GetAtMeMessagesResp struct {
+	List    []MessageInfo `json:"list"`
+	HasMore bool          `json:"hasMore"`
+}
+
 type GetConversationsResp struct {
 	List []ConversationInfo `json:"list"`
+}
+
+type GetGroupMessageHistoryReq struct {
+	GroupId   string `form:"groupId"`            // 群组ID
+	LastMsgId int64  `form:"lastMsgId,optional"` // 最后一条消息ID（用于分页）
+	Limit     int32  `form:"limit,default=20"`   // 获取条数
+}
+
+type GetGroupMessageHistoryResp struct {
+	List    []MessageInfo `json:"list"`
+	HasMore bool          `json:"hasMore"`
+}
+
+type GetGroupSyncReq struct {
+	GroupId string `form:"groupId"`           // 群组ID
+	Seq     uint64 `form:"seq,default=0"`     // 起始Seq（不包含）
+	Limit   int32  `form:"limit,default=200"` // 获取条数（后端会限制上限）
+}
+
+type GetGroupSyncResp struct {
+	List []MessageInfo `json:"list"`
 }
 
 type GetMessageHistoryReq struct {
@@ -27,8 +59,19 @@ type GetMessageHistoryResp struct {
 	HasMore bool          `json:"hasMore"`
 }
 
+type GetPrivateOfflineSyncReq struct {
+	Skip  int32 `form:"skip,default=0"`    // 跳过前N条（已通过WS推送的）
+	Limit int32 `form:"limit,default=100"` // 每次拉取条数
+}
+
+type GetPrivateOfflineSyncResp struct {
+	List    []MessageInfo `json:"list"`
+	HasMore bool          `json:"hasMore"`
+	Total   int64         `json:"total"`
+}
+
 type GetUnreadCountReq struct {
-	PeerId int64 `form:"peerId,optional"` // 对方用户ID，为空则获取所有未读
+	PeerId int64 `form:"peerId,optional"` // 对方用户ID，为空/0则获取全部未读
 }
 
 type GetUnreadCountResp struct {
@@ -37,20 +80,67 @@ type GetUnreadCountResp struct {
 
 type MarkAsReadReq struct {
 	PeerId int64    `json:"peerId"`          // 对方用户ID
-	MsgIds []string `json:"msgIds,optional"` // 消息ID列表，为空则标记所有
+	MsgIds []string `json:"msgIds,optional"` // 消息ID列表，为空则标记全部
 }
 
 type MarkAsReadResp struct {
-	Count int64 `json:"count"` // 标记的消息数量
+	Count int64 `json:"count"`
+}
+
+type MarkGroupReadReq struct {
+	GroupId string `json:"groupId"`
+	ReadSeq uint64 `json:"readSeq"`
+}
+
+type MarkGroupReadResp struct {
+	Success bool `json:"success"`
 }
 
 type MessageInfo struct {
-	Id          int64  `json:"id"`
-	MsgId       string `json:"msgId"`
-	FromUserId  int64  `json:"fromUserId"`
+	Id          int64   `json:"id"`
+	MsgId       string  `json:"msgId"`
+	FromUserId  int64   `json:"fromUserId"`
+	ToUserId    int64   `json:"toUserId"`
+	ChatType    int32   `json:"chatType,optional"` // 1-私聊 2-群聊
+	GroupId     string  `json:"groupId,optional"`  // 群聊时使用
+	Content     string  `json:"content"`
+	ContentType int32   `json:"contentType"` // 1-文本 2-图片 3-文件 4-语音
+	Status      int32   `json:"status"`      // 0-未读 1-已读 2-撤回
+	CreatedAt   int64   `json:"createdAt"`
+	Seq         uint64  `json:"seq,optional"`       // 群聊Seq（用于离线同步/已读进度）
+	AtUserIds   []int64 `json:"atUserIds,optional"` // 被@的用户ID列表
+}
+
+type SearchMessageReq struct {
+	Keyword string `form:"keyword"`
+}
+
+type SearchMessageResp struct {
+	List []MessageInfo `json:"list"`
+}
+
+type SendGroupMessageReq struct {
+	GroupId     string  `json:"groupId"`
+	Content     string  `json:"content"`
+	ContentType int32   `json:"contentType"`
+	AtUserIds   []int64 `json:"atUserIds,optional"` // 被@的用户ID列表，-1表示@全体
+}
+
+type SendGroupMessageResp struct {
+	Id        int64  `json:"id"`
+	MsgId     string `json:"msgId"`
+	CreatedAt int64  `json:"createdAt"`
+	Seq       uint64 `json:"seq"`
+}
+
+type SendMessageReq struct {
 	ToUserId    int64  `json:"toUserId"`
 	Content     string `json:"content"`
-	ContentType int32  `json:"contentType"` // 1-文字 2-图片 3-文件 4-语音
-	Status      int32  `json:"status"`      // 0-未读 1-已读 2-撤回
-	CreatedAt   int64  `json:"createdAt"`
+	ContentType int32  `json:"contentType"` // 1-文本 2-图片 3-文件 4-语音
+}
+
+type SendMessageResp struct {
+	Id        int64  `json:"id"`
+	MsgId     string `json:"msgId"`
+	CreatedAt int64  `json:"createdAt"`
 }

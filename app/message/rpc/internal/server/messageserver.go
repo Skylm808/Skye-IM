@@ -23,32 +23,62 @@ func NewMessageServer(svcCtx *svc.ServiceContext) *MessageServer {
 	}
 }
 
-// 发送消息（存储到数据库）
+// 发送私聊消息（存储到数据库）
 func (s *MessageServer) SendMessage(ctx context.Context, in *message.SendMessageReq) (*message.SendMessageResp, error) {
 	l := logic.NewSendMessageLogic(ctx, s.svcCtx)
 	return l.SendMessage(in)
 }
 
-// 获取历史消息列表（分页）
+// 发送群聊消息
+func (s *MessageServer) SendGroupMessage(ctx context.Context, in *message.SendGroupMessageReq) (*message.SendGroupMessageResp, error) {
+	l := logic.NewSendGroupMessageLogic(ctx, s.svcCtx)
+	return l.SendGroupMessage(in)
+}
+
+// 获取私聊历史消息列表（分页）
 func (s *MessageServer) GetMessageList(ctx context.Context, in *message.GetMessageListReq) (*message.GetMessageListResp, error) {
 	l := logic.NewGetMessageListLogic(ctx, s.svcCtx)
 	return l.GetMessageList(in)
 }
 
-// 标记消息为已读
+// 获取群聊历史消息列表（分页）
+func (s *MessageServer) GetGroupMessageList(ctx context.Context, in *message.GetGroupMessageListReq) (*message.GetGroupMessageListResp, error) {
+	l := logic.NewGetGroupMessageListLogic(ctx, s.svcCtx)
+	return l.GetGroupMessageList(in)
+}
+
+// 标记私聊消息为已读
 func (s *MessageServer) MarkAsRead(ctx context.Context, in *message.MarkAsReadReq) (*message.MarkAsReadResp, error) {
 	l := logic.NewMarkAsReadLogic(ctx, s.svcCtx)
 	return l.MarkAsRead(in)
 }
 
-// 获取未读消息数量
+// 获取私聊未读消息数量
 func (s *MessageServer) GetUnreadCount(ctx context.Context, in *message.GetUnreadCountReq) (*message.GetUnreadCountResp, error) {
 	l := logic.NewGetUnreadCountLogic(ctx, s.svcCtx)
 	return l.GetUnreadCount(in)
 }
 
-// 获取与某用户的未读消息
+// 获取私聊未读消息列表
 func (s *MessageServer) GetUnreadMessages(ctx context.Context, in *message.GetUnreadMessagesReq) (*message.GetUnreadMessagesResp, error) {
 	l := logic.NewGetUnreadMessagesLogic(ctx, s.svcCtx)
 	return l.GetUnreadMessages(in)
+}
+
+// 获取大于指定Seq的群聊消息 (用于消息同步)
+func (s *MessageServer) GetGroupMessagesBySeq(ctx context.Context, in *message.GetGroupMessagesBySeqReq) (*message.GetGroupMessagesBySeqResp, error) {
+	l := logic.NewGetGroupMessagesBySeqLogic(ctx, s.svcCtx)
+	return l.GetGroupMessagesBySeq(in)
+}
+
+// 模糊搜索消息内容
+func (s *MessageServer) SearchMessage(ctx context.Context, in *message.SearchMessageReq) (*message.SearchMessageResp, error) {
+	l := logic.NewSearchMessageLogic(ctx, s.svcCtx)
+	return l.SearchMessage(in)
+}
+
+// 获取@我的消息列表
+func (s *MessageServer) GetAtMeMessages(ctx context.Context, in *message.GetAtMeMessagesReq) (*message.GetAtMeMessagesResp, error) {
+	l := logic.NewGetAtMeMessagesLogic(ctx, s.svcCtx)
+	return l.GetAtMeMessages(in)
 }

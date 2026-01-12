@@ -23,7 +23,7 @@ func main() {
 	var c config.Config
 	conf.MustLoad(*configFile, &c)
 
-	server := rest.MustNewServer(c.RestConf, rest.WithCors())
+	server := rest.MustNewServer(c.RestConf) // Gateway统一处理CORS，API服务不需要
 	defer server.Stop()
 
 	ctx := svc.NewServiceContext(c)

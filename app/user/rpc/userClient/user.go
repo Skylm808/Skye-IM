@@ -2,7 +2,7 @@
 // goctl 1.9.2
 // Source: user.proto
 
-package userClient
+package userclient
 
 import (
 	"context"

@@ -8,50 +8,96 @@ info (
 )
 
 // ==================== 类型定义 ====================
-// 消息信息
+// 消息信息（私聊/群聊通用）
 type MessageInfo {
-	Id          int64  `json:"id"`
-	MsgId       string `json:"msgId"`
-	FromUserId  int64  `json:"fromUserId"`
-	ToUserId    int64  `json:"toUserId"`
-	Content     string `json:"content"`
-	ContentType int32  `json:"contentType"` // 1-文字 2-图片 3-文件 4-语音
-	Status      int32  `json:"status"` // 0-未读 1-已读 2-撤回
-	CreatedAt   int64  `json:"createdAt"`
+	Id          int64   `json:"id"`
+	MsgId       string  `json:"msgId"`
+	FromUserId  int64   `json:"fromUserId"`
+	ToUserId    int64   `json:"toUserId"`
+	ChatType    int32   `json:"chatType,optional"` // 1-私聊 2-群聊
+	GroupId     string  `json:"groupId,optional"` // 群聊时使用
+	Content     string  `json:"content"`
+	ContentType int32   `json:"contentType"` // 1-文本 2-图片 3-文件 4-语音
+	Status      int32   `json:"status"` // 0-未读 1-已读 2-撤回
+	CreatedAt   int64   `json:"createdAt"`
+	Seq         uint64  `json:"seq,optional"` // 群聊Seq（用于离线同步/已读进度）
+	AtUserIds   []int64 `json:"atUserIds,optional"` // 被@的用户ID列表
 }
 
-// 获取历史消息请求
+// 获取私聊历史消息请求
 type GetMessageHistoryReq {
 	PeerId    int64 `form:"peerId"` // 对方用户ID
 	LastMsgId int64 `form:"lastMsgId,optional"` // 最后一条消息ID（用于分页）
 	Limit     int32 `form:"limit,default=20"` // 获取条数
 }
 
-// 获取历史消息响应
 type GetMessageHistoryResp {
 	List    []MessageInfo `json:"list"`
 	HasMore bool          `json:"hasMore"`
 }
 
-// 获取未读消息数请求
-type GetUnreadCountReq {
-	PeerId int64 `form:"peerId,optional"` // 对方用户ID，为空则获取所有未读
+// 获取群聊历史消息请求（按消息ID分页）
+type GetGroupMessageHistoryReq {
+	GroupId   string `form:"groupId"` // 群组ID
+	LastMsgId int64  `form:"lastMsgId,optional"` // 最后一条消息ID（用于分页）
+	Limit     int32  `form:"limit,default=20"` // 获取条数
 }
 
-// 获取未读消息数响应
+type GetGroupMessageHistoryResp {
+	List    []MessageInfo `json:"list"`
+	HasMore bool          `json:"hasMore"`
+}
+
+// 群聊离线同步（按 seq 拉取 > seq 的消息）
+type GetGroupSyncReq {
+	GroupId string `form:"groupId"` // 群组ID
+	Seq     uint64 `form:"seq,default=0"` // 起始Seq（不包含）
+	Limit   int32  `form:"limit,default=200"` // 获取条数（后端会限制上限）
+}
+
+type GetGroupSyncResp {
+	List []MessageInfo `json:"list"`
+}
+
+// 私聊离线同步（拉取指定数量的离线消息）
+type GetPrivateOfflineSyncReq {
+	Skip  int32 `form:"skip,default=0"` // 跳过前N条（已通过WS推送的）
+	Limit int32 `form:"limit,default=100"` // 每次拉取条数
+}
+
+type GetPrivateOfflineSyncResp {
+	List    []MessageInfo `json:"list"`
+	HasMore bool          `json:"hasMore"`
+	Total   int64         `json:"total"`
+}
+
+// 获取未读数量请求（私聊）
+type GetUnreadCountReq {
+	PeerId int64 `form:"peerId,optional"` // 对方用户ID，为空/0则获取全部未读
+}
+
 type GetUnreadCountResp {
 	Count int64 `json:"count"`
 }
 
-// 标记已读请求
+// 标记私聊已读
 type MarkAsReadReq {
 	PeerId int64    `json:"peerId"` // 对方用户ID
-	MsgIds []string `json:"msgIds,optional"` // 消息ID列表，为空则标记所有
+	MsgIds []string `json:"msgIds,optional"` // 消息ID列表，为空则标记全部
 }
 
-// 标记已读响应
 type MarkAsReadResp {
-	Count int64 `json:"count"` // 标记的消息数量
+	Count int64 `json:"count"`
+}
+
+// 群聊已读上报（更新 read_seq）
+type MarkGroupReadReq {
+	GroupId string `json:"groupId"`
+	ReadSeq uint64 `json:"readSeq"`
+}
+
+type MarkGroupReadResp {
+	Success bool `json:"success"`
 }
 
 // 最近会话信息
@@ -61,15 +107,34 @@ type ConversationInfo {
 	UnreadCount int64       `json:"unreadCount"` // 未读消息数
 }
 
-// 获取会话列表响应
 type GetConversationsResp {
 	List []ConversationInfo `json:"list"`
 }
 
-// 空类型
+// 搜索消息请求
+type SearchMessageReq {
+	Keyword string `form:"keyword"`
+}
+
+type SearchMessageResp {
+	List []MessageInfo `json:"list"`
+}
+
+// 获取@我的消息请求
+type GetAtMeMessagesReq {
+	GroupId   string `form:"groupId,optional"` // 群组ID（可选，为空则查询所有群）
+	LastMsgId int64  `form:"lastMsgId,optional"` // 最后一条消息ID（用于分页）
+	Limit     int32  `form:"limit,default=20"` // 获取条数
+}
+
+type GetAtMeMessagesResp {
+	List    []MessageInfo `json:"list"`
+	HasMore bool          `json:"hasMore"`
+}
+
 type Empty {}
 
-// ==================== 消息接口（需认证） ====================
+// ==================== 接口定义（需认证） ====================
 @server (
 	prefix: /api/v1/message
 	group:  message
@@ -80,16 +145,75 @@ service message-api {
 	@handler GetMessageHistory
 	get /history (GetMessageHistoryReq) returns (GetMessageHistoryResp)
 
-	@doc "获取未读消息数"
+	@doc "获取群聊历史消息"
+	@handler GetGroupMessageHistory
+	get /group/history (GetGroupMessageHistoryReq) returns (GetGroupMessageHistoryResp)
+
+	@doc "群聊离线同步（按seq拉取）"
+	@handler GetGroupSync
+	get /group/sync (GetGroupSyncReq) returns (GetGroupSyncResp)
+
+	@doc "私聊离线同步（拉取剩余离线消息）"
+	@handler GetPrivateOfflineSync
+	get /offline (GetPrivateOfflineSyncReq) returns (GetPrivateOfflineSyncResp)
+
+	@doc "获取未读消息数（私聊）"
 	@handler GetUnreadCount
 	get /unread/count (GetUnreadCountReq) returns (GetUnreadCountResp)
 
-	@doc "标记消息为已读"
+	@doc "标记私聊消息为已读"
 	@handler MarkAsRead
 	post /read (MarkAsReadReq) returns (MarkAsReadResp)
+
+	@doc "群聊已读上报（更新readSeq）"
+	@handler MarkGroupRead
+	post /group/read (MarkGroupReadReq) returns (MarkGroupReadResp)
 
 	@doc "获取会话列表（最近联系人）"
 	@handler GetConversations
 	get /conversations (Empty) returns (GetConversationsResp)
+
+	@doc "模糊搜索聊天记录"
+	@handler SearchMessage
+	get /search (SearchMessageReq) returns (SearchMessageResp)
+
+	@doc "获取@我的消息列表"
+	@handler GetAtMeMessages
+	get /at-me (GetAtMeMessagesReq) returns (GetAtMeMessagesResp)
+
+	@doc "发送私聊消息（可选：主要走WS）"
+	@handler SendMessage
+	post /send (SendMessageReq) returns (SendMessageResp)
+
+	@doc "发送群聊消息（可选：主要走WS）"
+	@handler SendGroupMessage
+	post /group/send (SendGroupMessageReq) returns (SendGroupMessageResp)
+}
+
+// ==================== 发送（HTTP 可选） ====================
+type SendMessageReq {
+	ToUserId    int64  `json:"toUserId"`
+	Content     string `json:"content"`
+	ContentType int32  `json:"contentType"` // 1-文本 2-图片 3-文件 4-语音
+}
+
+type SendMessageResp {
+	Id        int64  `json:"id"`
+	MsgId     string `json:"msgId"`
+	CreatedAt int64  `json:"createdAt"`
+}
+
+type SendGroupMessageReq {
+	GroupId     string  `json:"groupId"`
+	Content     string  `json:"content"`
+	ContentType int32   `json:"contentType"`
+	AtUserIds   []int64 `json:"atUserIds,optional"` // 被@的用户ID列表，-1表示@全体
+}
+
+type SendGroupMessageResp {
+	Id        int64  `json:"id"`
+	MsgId     string `json:"msgId"`
+	CreatedAt int64  `json:"createdAt"`
+	Seq       uint64 `json:"seq"`
 }
 

@@ -22,16 +22,26 @@ const _ = grpc.SupportPackageIsVersion7
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type MessageClient interface {
-	// 发送消息（存储到数据库）
+	// 发送私聊消息（存储到数据库）
 	SendMessage(ctx context.Context, in *SendMessageReq, opts ...grpc.CallOption) (*SendMessageResp, error)
-	// 获取历史消息列表（分页）
+	// 发送群聊消息
+	SendGroupMessage(ctx context.Context, in *SendGroupMessageReq, opts ...grpc.CallOption) (*SendGroupMessageResp, error)
+	// 获取私聊历史消息列表（分页）
 	GetMessageList(ctx context.Context, in *GetMessageListReq, opts ...grpc.CallOption) (*GetMessageListResp, error)
-	// 标记消息为已读
+	// 获取群聊历史消息列表（分页）
+	GetGroupMessageList(ctx context.Context, in *GetGroupMessageListReq, opts ...grpc.CallOption) (*GetGroupMessageListResp, error)
+	// 标记私聊消息为已读
 	MarkAsRead(ctx context.Context, in *MarkAsReadReq, opts ...grpc.CallOption) (*MarkAsReadResp, error)
-	// 获取未读消息数量
+	// 获取私聊未读消息数量
 	GetUnreadCount(ctx context.Context, in *GetUnreadCountReq, opts ...grpc.CallOption) (*GetUnreadCountResp, error)
-	// 获取与某用户的未读消息
+	// 获取私聊未读消息列表
 	GetUnreadMessages(ctx context.Context, in *GetUnreadMessagesReq, opts ...grpc.CallOption) (*GetUnreadMessagesResp, error)
+	// 获取大于指定Seq的群聊消息 (用于消息同步)
+	GetGroupMessagesBySeq(ctx context.Context, in *GetGroupMessagesBySeqReq, opts ...grpc.CallOption) (*GetGroupMessagesBySeqResp, error)
+	// 模糊搜索消息内容
+	SearchMessage(ctx context.Context, in *SearchMessageReq, opts ...grpc.CallOption) (*SearchMessageResp, error)
+	// 获取@我的消息列表
+	GetAtMeMessages(ctx context.Context, in *GetAtMeMessagesReq, opts ...grpc.CallOption) (*GetAtMeMessagesResp, error)
 }
 
 type messageClient struct {
@@ -51,9 +61,27 @@ func (c *messageClient) SendMessage(ctx context.Context, in *SendMessageReq, opt
 	return out, nil
 }
 
+func (c *messageClient) SendGroupMessage(ctx context.Context, in *SendGroupMessageReq, opts ...grpc.CallOption) (*SendGroupMessageResp, error) {
+	out := new(SendGroupMessageResp)
+	err := c.cc.Invoke(ctx, "/message.Message/SendGroupMessage", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *messageClient) GetMessageList(ctx context.Context, in *GetMessageListReq, opts ...grpc.CallOption) (*GetMessageListResp, error) {
 	out := new(GetMessageListResp)
 	err := c.cc.Invoke(ctx, "/message.Message/GetMessageList", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *messageClient) GetGroupMessageList(ctx context.Context, in *GetGroupMessageListReq, opts ...grpc.CallOption) (*GetGroupMessageListResp, error) {
+	out := new(GetGroupMessageListResp)
+	err := c.cc.Invoke(ctx, "/message.Message/GetGroupMessageList", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -87,20 +115,57 @@ func (c *messageClient) GetUnreadMessages(ctx context.Context, in *GetUnreadMess
 	return out, nil
 }
 
+func (c *messageClient) GetGroupMessagesBySeq(ctx context.Context, in *GetGroupMessagesBySeqReq, opts ...grpc.CallOption) (*GetGroupMessagesBySeqResp, error) {
+	out := new(GetGroupMessagesBySeqResp)
+	err := c.cc.Invoke(ctx, "/message.Message/GetGroupMessagesBySeq", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *messageClient) SearchMessage(ctx context.Context, in *SearchMessageReq, opts ...grpc.CallOption) (*SearchMessageResp, error) {
+	out := new(SearchMessageResp)
+	err := c.cc.Invoke(ctx, "/message.Message/SearchMessage", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *messageClient) GetAtMeMessages(ctx context.Context, in *GetAtMeMessagesReq, opts ...grpc.CallOption) (*GetAtMeMessagesResp, error) {
+	out := new(GetAtMeMessagesResp)
+	err := c.cc.Invoke(ctx, "/message.Message/GetAtMeMessages", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // MessageServer is the server API for Message service.
 // All implementations must embed UnimplementedMessageServer
 // for forward compatibility
 type MessageServer interface {
-	// 发送消息（存储到数据库）
+	// 发送私聊消息（存储到数据库）
 	SendMessage(context.Context, *SendMessageReq) (*SendMessageResp, error)
-	// 获取历史消息列表（分页）
+	// 发送群聊消息
+	SendGroupMessage(context.Context, *SendGroupMessageReq) (*SendGroupMessageResp, error)
+	// 获取私聊历史消息列表（分页）
 	GetMessageList(context.Context, *GetMessageListReq) (*GetMessageListResp, error)
-	// 标记消息为已读
+	// 获取群聊历史消息列表（分页）
+	GetGroupMessageList(context.Context, *GetGroupMessageListReq) (*GetGroupMessageListResp, error)
+	// 标记私聊消息为已读
 	MarkAsRead(context.Context, *MarkAsReadReq) (*MarkAsReadResp, error)
-	// 获取未读消息数量
+	// 获取私聊未读消息数量
 	GetUnreadCount(context.Context, *GetUnreadCountReq) (*GetUnreadCountResp, error)
-	// 获取与某用户的未读消息
+	// 获取私聊未读消息列表
 	GetUnreadMessages(context.Context, *GetUnreadMessagesReq) (*GetUnreadMessagesResp, error)
+	// 获取大于指定Seq的群聊消息 (用于消息同步)
+	GetGroupMessagesBySeq(context.Context, *GetGroupMessagesBySeqReq) (*GetGroupMessagesBySeqResp, error)
+	// 模糊搜索消息内容
+	SearchMessage(context.Context, *SearchMessageReq) (*SearchMessageResp, error)
+	// 获取@我的消息列表
+	GetAtMeMessages(context.Context, *GetAtMeMessagesReq) (*GetAtMeMessagesResp, error)
 	mustEmbedUnimplementedMessageServer()
 }
 
@@ -111,8 +176,14 @@ type UnimplementedMessageServer struct {
 func (UnimplementedMessageServer) SendMessage(context.Context, *SendMessageReq) (*SendMessageResp, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SendMessage not implemented")
 }
+func (UnimplementedMessageServer) SendGroupMessage(context.Context, *SendGroupMessageReq) (*SendGroupMessageResp, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SendGroupMessage not implemented")
+}
 func (UnimplementedMessageServer) GetMessageList(context.Context, *GetMessageListReq) (*GetMessageListResp, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetMessageList not implemented")
+}
+func (UnimplementedMessageServer) GetGroupMessageList(context.Context, *GetGroupMessageListReq) (*GetGroupMessageListResp, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetGroupMessageList not implemented")
 }
 func (UnimplementedMessageServer) MarkAsRead(context.Context, *MarkAsReadReq) (*MarkAsReadResp, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method MarkAsRead not implemented")
@@ -122,6 +193,15 @@ func (UnimplementedMessageServer) GetUnreadCount(context.Context, *GetUnreadCoun
 }
 func (UnimplementedMessageServer) GetUnreadMessages(context.Context, *GetUnreadMessagesReq) (*GetUnreadMessagesResp, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetUnreadMessages not implemented")
+}
+func (UnimplementedMessageServer) GetGroupMessagesBySeq(context.Context, *GetGroupMessagesBySeqReq) (*GetGroupMessagesBySeqResp, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetGroupMessagesBySeq not implemented")
+}
+func (UnimplementedMessageServer) SearchMessage(context.Context, *SearchMessageReq) (*SearchMessageResp, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SearchMessage not implemented")
+}
+func (UnimplementedMessageServer) GetAtMeMessages(context.Context, *GetAtMeMessagesReq) (*GetAtMeMessagesResp, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetAtMeMessages not implemented")
 }
 func (UnimplementedMessageServer) mustEmbedUnimplementedMessageServer() {}
 
@@ -154,6 +234,24 @@ func _Message_SendMessage_Handler(srv interface{}, ctx context.Context, dec func
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Message_SendGroupMessage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SendGroupMessageReq)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MessageServer).SendGroupMessage(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/message.Message/SendGroupMessage",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MessageServer).SendGroupMessage(ctx, req.(*SendGroupMessageReq))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _Message_GetMessageList_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetMessageListReq)
 	if err := dec(in); err != nil {
@@ -168,6 +266,24 @@ func _Message_GetMessageList_Handler(srv interface{}, ctx context.Context, dec f
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(MessageServer).GetMessageList(ctx, req.(*GetMessageListReq))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Message_GetGroupMessageList_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetGroupMessageListReq)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MessageServer).GetGroupMessageList(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/message.Message/GetGroupMessageList",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MessageServer).GetGroupMessageList(ctx, req.(*GetGroupMessageListReq))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -226,6 +342,60 @@ func _Message_GetUnreadMessages_Handler(srv interface{}, ctx context.Context, de
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Message_GetGroupMessagesBySeq_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetGroupMessagesBySeqReq)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MessageServer).GetGroupMessagesBySeq(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/message.Message/GetGroupMessagesBySeq",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MessageServer).GetGroupMessagesBySeq(ctx, req.(*GetGroupMessagesBySeqReq))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Message_SearchMessage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SearchMessageReq)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MessageServer).SearchMessage(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/message.Message/SearchMessage",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MessageServer).SearchMessage(ctx, req.(*SearchMessageReq))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Message_GetAtMeMessages_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetAtMeMessagesReq)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MessageServer).GetAtMeMessages(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/message.Message/GetAtMeMessages",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MessageServer).GetAtMeMessages(ctx, req.(*GetAtMeMessagesReq))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Message_ServiceDesc is the grpc.ServiceDesc for Message service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -238,8 +408,16 @@ var Message_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _Message_SendMessage_Handler,
 		},
 		{
+			MethodName: "SendGroupMessage",
+			Handler:    _Message_SendGroupMessage_Handler,
+		},
+		{
 			MethodName: "GetMessageList",
 			Handler:    _Message_GetMessageList_Handler,
+		},
+		{
+			MethodName: "GetGroupMessageList",
+			Handler:    _Message_GetGroupMessageList_Handler,
 		},
 		{
 			MethodName: "MarkAsRead",
@@ -252,6 +430,18 @@ var Message_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetUnreadMessages",
 			Handler:    _Message_GetUnreadMessages_Handler,
+		},
+		{
+			MethodName: "GetGroupMessagesBySeq",
+			Handler:    _Message_GetGroupMessagesBySeq_Handler,
+		},
+		{
+			MethodName: "SearchMessage",
+			Handler:    _Message_SearchMessage_Handler,
+		},
+		{
+			MethodName: "GetAtMeMessages",
+			Handler:    _Message_GetAtMeMessages_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

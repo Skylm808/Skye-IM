@@ -66,6 +66,9 @@ func convertToUserInfo(u *model.User) *user.UserInfo {
 		Avatar:    u.Avatar,
 		Phone:     phone,
 		Email:     email,
+		Signature: u.Signature,
+		Gender:    int64(u.Gender),
+		Region:    u.Region,
 		Status:    int64(u.Status),
 		CreatedAt: u.CreatedAt.Unix(),
 	}

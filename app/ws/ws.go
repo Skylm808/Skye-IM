@@ -54,6 +54,14 @@ func main() {
 		},
 	})
 
+	// 群组事件推送接口（内部调用）
+	pushHandler := handler.NewPushEventHandler(ctx, hub)
+	server.AddRoute(rest.Route{
+		Method:  http.MethodPost,
+		Path:    "/api/push/event",
+		Handler: pushHandler.ServeHTTP,
+	})
+
 	fmt.Printf("Starting WebSocket server at %s:%d...\n", c.Host, c.Port)
 	logx.Infof("WebSocket server listening on %s:%d", c.Host, c.Port)
 	server.Start()

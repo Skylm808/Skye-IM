@@ -10,6 +10,22 @@ type GetUserRequest struct {
 	Id int64 `path:"id"`
 }
 
+type GlobalSearchRequest struct {
+	Keyword string `form:"keyword"`
+}
+
+type GlobalSearchResponse struct {
+	Users  []UserInfo  `json:"users"`
+	Groups []GroupInfo `json:"groups"` // 需同步导入 Group 类型，或者在这里定义一个简版
+}
+
+type GroupInfo struct {
+	GroupId     string `json:"groupId"`
+	Name        string `json:"name"`
+	Avatar      string `json:"avatar"`
+	Description string `json:"description"`
+}
+
 type ProfileResponse struct {
 	User UserInfo `json:"user"`
 }
@@ -28,9 +44,12 @@ type UpdateAvatarRequest struct {
 }
 
 type UpdateProfileRequest struct {
-	Nickname string `json:"nickname,optional"`
-	Avatar   string `json:"avatar,optional"`
-	Phone    string `json:"phone,optional"`
+	Nickname  string `json:"nickname,optional"`
+	Avatar    string `json:"avatar,optional"`
+	Signature string `json:"signature,optional"`
+	Gender    int64  `json:"gender,optional"`
+	Region    string `json:"region,optional"`
+	Phone     string `json:"phone,optional"`
 }
 
 type UserInfo struct {
@@ -38,6 +57,9 @@ type UserInfo struct {
 	Username  string `json:"username"`
 	Nickname  string `json:"nickname"`
 	Avatar    string `json:"avatar"`
+	Signature string `json:"signature"`
+	Gender    int64  `json:"gender"`
+	Region    string `json:"region"`
 	Phone     string `json:"phone"`
 	Email     string `json:"email"`
 	Status    int64  `json:"status"`

@@ -1,0 +1,50 @@
+Name: gateway
+Host: 0.0.0.0
+Port: 8080
+
+# Etcd 服务发现配置（Gateway作为客户端，只查询不注册）
+Etcd:
+  Hosts:
+    - 127.0.0.1:2379
+  Key: ""  # Gateway不注册到etcd，留空或删除此行
+
+# JWT 配置（与所有服务保持一致）
+Auth:
+  AccessSecret: "Skylm-im-secret-key"
+  AccessExpire: 604800  # 7天（秒）
+
+# 白名单配置（不需要JWT鉴权的接口）
+WhiteList:
+  - ^/api/v1/auth/login$
+  - ^/api/v1/auth/register$
+  - ^/api/v1/auth/captcha/send$
+  - ^/api/v1/auth/password/forgot$
+  - ^/api/v1/auth/refresh$
+
+# CORS 跨域配置
+Cors:
+  AllowOrigins:
+    - "http://localhost:3000"
+    - "http://localhost:5173"
+    - "http://localhost:5174"
+  AllowMethods:
+    - "GET"
+    - "POST"
+    - "PUT"
+    - "DELETE"
+    - "OPTIONS"
+  AllowHeaders:
+    - "Content-Type"
+    - "Authorization"
+    - "X-Requested-With"
+  ExposeHeaders:
+    - "Content-Length"
+    - "Access-Control-Allow-Origin"
+  AllowCredentials: true
+  MaxAge: 3600
+
+# 日志配置
+Log:
+  ServiceName: gateway
+  Mode: console
+  Level: info

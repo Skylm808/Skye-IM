@@ -53,6 +53,15 @@ func (l *UpdateUserLogic) UpdateUser(in *user.UpdateUserRequest) (*user.UpdateUs
 	if in.Phone != "" {
 		userInfo.Phone = sql.NullString{String: in.Phone, Valid: true}
 	}
+	if in.Signature != "" {
+		userInfo.Signature = in.Signature
+	}
+	if in.Gender != 0 {
+		userInfo.Gender = uint64(in.Gender)
+	}
+	if in.Region != "" {
+		userInfo.Region = in.Region
+	}
 
 	// 保存更新
 	err = l.svcCtx.UserModel.Update(l.ctx, userInfo)

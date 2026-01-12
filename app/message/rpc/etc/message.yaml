@@ -23,3 +23,10 @@ Etcd:
   Hosts:
     - 127.0.0.1:2379
   Key: message.rpc
+
+# Group RPC 客户端配置
+GroupRpc:
+  Etcd:
+    Hosts:
+      - 127.0.0.1:2379
+    Key: group.rpc

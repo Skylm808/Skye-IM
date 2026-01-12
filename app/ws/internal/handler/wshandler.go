@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"SkyeIM/app/friend/rpc/friend"
+	"SkyeIM/app/group/rpc/group"
 	"SkyeIM/app/message/rpc/message"
 	"SkyeIM/app/ws/internal/config"
 	"SkyeIM/app/ws/internal/conn"
@@ -135,7 +136,7 @@ func (h *WsHandler) parseToken(tokenString string) (int64, error) {
 	return userId, nil
 }
 
-// pushOfflineMessages 推送离线消息
+// pushOfflineMessages 推送离线消息（优化版：只推最近20条）
 func (h *WsHandler) pushOfflineMessages(client *conn.Client) {
 	ctx := context.Background()
 
@@ -143,7 +144,7 @@ func (h *WsHandler) pushOfflineMessages(client *conn.Client) {
 	friendResp, err := h.svcCtx.FriendRpc.GetFriendList(ctx, &friend.GetFriendListReq{
 		UserId:   client.UserId,
 		Page:     1,
-		PageSize: 10000, // 获取所有好友
+		PageSize: 10000,
 	})
 
 	if err != nil {
@@ -160,12 +161,10 @@ func (h *WsHandler) pushOfflineMessages(client *conn.Client) {
 	var allUnreadMessages []*message.MessageInfo
 
 	for _, friendInfo := range friendResp.List {
-		// 跳过被拉黑的好友
 		if friendInfo.Status == 2 {
 			continue
 		}
 
-		// 获取与该好友的未读消息
 		unreadResp, err := h.svcCtx.MessageRpc.GetUnreadMessages(ctx, &message.GetUnreadMessagesReq{
 			UserId: client.UserId,
 			PeerId: friendInfo.FriendId,
@@ -187,15 +186,42 @@ func (h *WsHandler) pushOfflineMessages(client *conn.Client) {
 		return
 	}
 
-	// 3. 按时间排序（从旧到新）
+	// 3. 按时间排序
 	sort.Slice(allUnreadMessages, func(i, j int) bool {
 		return allUnreadMessages[i].CreatedAt < allUnreadMessages[j].CreatedAt
 	})
 
-	logx.Infof("[WsHandler] Pushing %d offline messages to user %d", len(allUnreadMessages), client.UserId)
+	// ========== 优化：只推送最近N条 ==========
+	const maxPushCount = 20
+	totalCount := len(allUnreadMessages)
+	pushList := allUnreadMessages
 
-	// 4. 推送消息给客户端
-	for _, msg := range allUnreadMessages {
+	if totalCount > maxPushCount {
+		pushList = allUnreadMessages[totalCount-maxPushCount:]
+		logx.Infof("[WsHandler] User %d has %d offline messages, will push latest %d", client.UserId, totalCount, maxPushCount)
+	}
+
+	// 4. 发送离线消息摘要
+	summaryMsg := &conn.Message{
+		Type: "offline_summary",
+		Data: mustMarshal(map[string]interface{}{
+			"totalCount":  totalCount,
+			"pushCount":   len(pushList),
+			"hasMore":     totalCount > maxPushCount,
+			"remainCount": totalCount - len(pushList),
+			"messageType": "private",
+		}),
+	}
+
+	select {
+	case client.SendChannel() <- &conn.BroadcastMessage{Type: "offline_summary", Data: summaryMsg.Data}:
+		logx.Infof("[WsHandler] Sent offline summary to user %d: total=%d, push=%d", client.UserId, totalCount, len(pushList))
+	default:
+		logx.Errorf("[WsHandler] Failed to send offline summary to user %d (buffer full)", client.UserId)
+	}
+
+	// 5. 推送消息
+	for _, msg := range pushList {
 		chatMsg := &conn.ChatMessage{
 			MsgId:       msg.MsgId,
 			FromUserId:  msg.FromUserId,
@@ -205,25 +231,172 @@ func (h *WsHandler) pushOfflineMessages(client *conn.Client) {
 			CreatedAt:   msg.CreatedAt,
 		}
 
-		// 构造消息
 		wsMsg := &conn.Message{
 			Type: "chat",
 			Data: mustMarshal(chatMsg),
 		}
 
-		// 发送消息
 		select {
 		case client.SendChannel() <- &conn.BroadcastMessage{Type: "chat", Data: wsMsg.Data}:
-			// 发送成功
 		default:
 			logx.Errorf("[WsHandler] Failed to push offline message %s to user %d (buffer full)", msg.MsgId, client.UserId)
 		}
 
-		// 避免消息推送过快，稍微延迟
-		time.Sleep(10 * time.Millisecond)
+		time.Sleep(5 * time.Millisecond)
 	}
 
-	logx.Infof("[WsHandler] Successfully pushed %d offline messages to user %d", len(allUnreadMessages), client.UserId)
+	logx.Infof("[WsHandler] Successfully pushed %d/%d offline private messages to user %d", len(pushList), totalCount, client.UserId)
+
+	// 6. 推送群聊离线消息
+	h.pushOfflineGroupMessages(client)
+}
+
+// pushOfflineGroupMessages 推送群聊离线消息
+func (h *WsHandler) pushOfflineGroupMessages(client *conn.Client) {
+	ctx := context.Background()
+
+	// 1. 获取用户加入的群组列表（包含 ReadSeq）
+	groupResp, err := h.svcCtx.GroupRpc.GetJoinedGroups(ctx, &group.GetJoinedGroupsReq{
+		UserId: client.UserId,
+	})
+
+	if err != nil {
+		logx.Errorf("[WsHandler] Failed to get joined groups for user %d: %v", client.UserId, err)
+		return
+	}
+
+	if len(groupResp.List) == 0 {
+		logx.Infof("[WsHandler] User %d has no groups, skip offline group messages", client.UserId)
+		return
+	}
+
+	// 2. 收集所有群组的未读消息
+	var allGroupMessages []*message.MessageInfo
+
+	for _, memberInfo := range groupResp.List {
+		// 跳过被禁言的用户？不需要，禁言也能看历史消息
+		// 获取大于 ReadSeq 的消息
+		msgResp, err := h.svcCtx.MessageRpc.GetGroupMessagesBySeq(ctx, &message.GetGroupMessagesBySeqReq{
+			UserId:  client.UserId,
+			GroupId: memberInfo.GroupId,
+			Seq:     memberInfo.ReadSeq,
+		})
+
+		if err != nil {
+			logx.Errorf("[WsHandler] Failed to get group messages for user %d in group %s: %v",
+				client.UserId, memberInfo.GroupId, err)
+			continue
+		}
+
+		if len(msgResp.List) > 0 {
+			// 过滤掉自己发送的消息（可选，如果自己多端登录可能需要同步给自己）
+			// 这里假设同步逻辑: 自己发的消息，其他端虽然已读Seq没更，但通常不需要作为"离线消息"强推，除非为了多端同步。
+			// 简单起见，推送所有 > ReadSeq 的消息。
+			for _, msg := range msgResp.List {
+				if msg.FromUserId != client.UserId {
+					allGroupMessages = append(allGroupMessages, msg)
+				}
+			}
+		}
+	}
+
+	if len(allGroupMessages) == 0 {
+		logx.Infof("[WsHandler] No offline group messages for user %d", client.UserId)
+		return
+	}
+
+	// 3. 按时间排序（从旧到新），如果时间相同按Seq排序
+	sort.Slice(allGroupMessages, func(i, j int) bool {
+		if allGroupMessages[i].CreatedAt == allGroupMessages[j].CreatedAt {
+			return allGroupMessages[i].Seq < allGroupMessages[j].Seq
+		}
+		return allGroupMessages[i].CreatedAt < allGroupMessages[j].CreatedAt
+	})
+
+	// ========== 优化：只推送最近N条 ==========
+	const maxPushCount = 20
+	totalCount := len(allGroupMessages)
+	pushList := allGroupMessages
+
+	if totalCount > maxPushCount {
+		// 只取最后20条（最新的20条）
+		pushList = allGroupMessages[totalCount-maxPushCount:]
+		logx.Infof("[WsHandler] User %d has %d offline group messages, will push latest %d", client.UserId, totalCount, maxPushCount)
+	}
+
+	// 4. 发送群聊离线消息摘要
+	summaryMsg := &conn.Message{
+		Type: "offline_summary",
+		Data: mustMarshal(map[string]interface{}{
+			"totalCount":  totalCount,
+			"pushCount":   len(pushList),
+			"hasMore":     totalCount > maxPushCount,
+			"remainCount": totalCount - len(pushList),
+			"messageType": "group",
+		}),
+	}
+
+	select {
+	case client.SendChannel() <- &conn.BroadcastMessage{Type: "offline_summary", Data: summaryMsg.Data}:
+		logx.Infof("[WsHandler] Sent group offline summary to user %d: total=%d, push=%d", client.UserId, totalCount, len(pushList))
+	default:
+		logx.Errorf("[WsHandler] Failed to send group offline summary to user %d (buffer full)", client.UserId)
+	}
+
+	// 5. 推送群聊消息给客户端
+	for _, msg := range pushList {
+		// 解析@用户列表
+		var atUserIds []int64
+		if msg.AtUserIds != nil {
+			atUserIds = msg.AtUserIds
+		}
+
+		// 检查是否@了当前用户
+		isAtMe := false
+		for _, id := range atUserIds {
+			if id == client.UserId || id == -1 { // -1表示@全体
+				isAtMe = true
+				break
+			}
+		}
+
+		groupChatMsg := &conn.GroupChatMessage{
+			MsgId:       msg.MsgId,
+			FromUserId:  msg.FromUserId,
+			GroupId:     msg.GroupId,
+			Content:     msg.Content,
+			ContentType: msg.ContentType,
+			CreatedAt:   msg.CreatedAt,
+			Seq:         msg.Seq,
+			AtUserIds:   atUserIds,
+			IsAtMe:      isAtMe,
+		}
+
+		// 构造消息
+		wsMsg := &conn.Message{
+			Type: "group_chat",
+			Data: mustMarshal(groupChatMsg),
+		}
+
+		// 发送消息
+		select {
+		case client.SendChannel() <- &conn.BroadcastMessage{Type: "group_chat", Data: wsMsg.Data}:
+			// 发送成功
+		default:
+			logx.Errorf("[WsHandler] Failed to push offline group message %s to user %d (buffer full)", msg.MsgId, client.UserId)
+		}
+
+		// 避免消息推送过快，稍微延迟
+		time.Sleep(5 * time.Millisecond)
+	}
+
+	logx.Infof("[WsHandler] Successfully pushed %d/%d offline group messages to user %d", len(pushList), totalCount, client.UserId)
+
+	// 6. 不自动更新ReadSeq
+	// ReadSeq应该由客户端显式上报，而不是推送后自动标记为已读
+	// 推送离线消息不代表用户已读，用户可能还没有真正看到这些消息
+	// 客户端应该在用户真正阅读消息后，调用群消息已读上报API
+	logx.Infof("[WsHandler] Pushed %d offline group messages to user %d, waiting for client read confirmation", len(pushList), client.UserId)
 }
 
 // mustMarshal JSON序列化，忽略错误

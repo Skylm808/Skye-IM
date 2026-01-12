@@ -58,6 +58,15 @@ func (l *UpdateProfileLogic) UpdateProfile(req *types.UpdateProfileRequest) (res
 	if req.Phone != "" {
 		user.Phone = sql.NullString{String: req.Phone, Valid: true}
 	}
+	if req.Signature != "" {
+		user.Signature = req.Signature
+	}
+	if req.Gender != 0 {
+		user.Gender = uint64(req.Gender)
+	}
+	if req.Region != "" {
+		user.Region = req.Region
+	}
 
 	// 保存更新
 	err = l.svcCtx.UserModel.Update(l.ctx, user)

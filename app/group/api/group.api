@@ -1,0 +1,268 @@
+syntax = "v1"
+
+info (
+	title:   "群组服务 API"
+	desc:    "群组管理与邀请"
+	author:  "Skylm"
+	version: "v1"
+)
+
+type Response {
+	Code    int32       `json:"code"`
+	Message string      `json:"message"`
+	Data    interface{} `json:"data,omitempty"`
+}
+
+type CreateGroupReq {
+	Name        string  `json:"name"`
+	Avatar      string  `json:"avatar,optional"`
+	Description string  `json:"description,optional"`
+	MaxMembers  int32   `json:"maxMembers,optional"`
+	MemberIds   []int64 `json:"memberIds,optional"`
+}
+
+type CreateGroupResp {
+	GroupId string `json:"groupId"`
+}
+
+type DismissGroupReq {
+	GroupId string `json:"groupId"`
+}
+
+type InviteMembersReq {
+	GroupId   string  `json:"groupId"`
+	MemberIds []int64 `json:"memberIds"`
+}
+
+type InviteMembersResp {
+	SuccessCount int32   `json:"successCount"`
+	FailedIds    []int64 `json:"failedIds"`
+}
+
+type KickMemberReq {
+	GroupId  string `json:"groupId"`
+	MemberId int64  `json:"memberId"`
+}
+
+type QuitGroupReq {
+	GroupId string `json:"groupId"`
+}
+
+type GetGroupListReq {
+	Page     int32 `form:"page,default=1"`
+	PageSize int32 `form:"pageSize,default=20"`
+}
+
+type GroupInfo {
+	GroupId     string `json:"groupId"`
+	Name        string `json:"name"`
+	Avatar      string `json:"avatar"`
+	OwnerId     int64  `json:"ownerId"`
+	Description string `json:"description"`
+	MemberCount int32  `json:"memberCount"`
+	MaxMembers  int32  `json:"maxMembers"`
+	Status      int32  `json:"status"`
+	CreatedAt   int64  `json:"createdAt"`
+	UpdatedAt   int64  `json:"updatedAt"`
+}
+
+type GetGroupListResp {
+	List  []GroupInfo `json:"list"`
+	Total int64       `json:"total"`
+}
+
+type GetGroupInfoReq {
+	GroupId string `path:"groupId"`
+}
+
+type GetMemberListReq {
+	GroupId  string `form:"groupId"`
+	Page     int32  `form:"page,default=1"`
+	PageSize int32  `form:"pageSize,default=20"`
+}
+
+type MemberInfo {
+	UserId   int64  `json:"userId"`
+	Nickname string `json:"nickname"`
+	Avatar   string `json:"avatar"`
+	Role     int32  `json:"role"`
+	Mute     int32  `json:"mute"`
+	JoinTime int64  `json:"joinTime"`
+	JoinedAt string `json:"joinedAt"`
+	ReadSeq  uint64 `json:"readSeq"`
+}
+
+type GetMemberListResp {
+	List  []MemberInfo `json:"list"`
+	Total int64        `json:"total"`
+}
+
+type SearchGroupReq {
+	Keyword string `form:"keyword"`
+}
+
+type SearchGroupPreciseReq {
+	GroupId string `form:"groupId"`
+}
+
+type SearchGroupResp {
+	List  []GroupInfo `json:"list"`
+	Total int64       `json:"total"`
+}
+
+type UpdateGroupReq {
+	GroupId     string `json:"groupId"`
+	Name        string `json:"name,optional"`
+	Avatar      string `json:"avatar,optional"`
+	Description string `json:"description,optional"`
+	MaxMembers  int32  `json:"maxMembers,optional"`
+}
+
+type SetMemberRoleReq {
+	GroupId  string `json:"groupId"`
+	MemberId int64  `json:"memberId"`
+	Role     int32  `json:"role"`
+}
+
+type SetMemberMuteReq {
+	GroupId  string `json:"groupId"`
+	MemberId int64  `json:"memberId"`
+	Mute     int32  `json:"mute"`
+}
+
+type UpdateGroupReadSeqReq {
+	GroupId string `json:"groupId"`
+	ReadSeq uint64 `json:"readSeq"`
+}
+
+type SendGroupInvitationReq {
+	GroupId   string `json:"groupId"`
+	InviteeId int64  `json:"inviteeId"`
+	Message   string `json:"message,optional"`
+}
+
+type SendGroupInvitationResp {
+	InvitationId int64 `json:"invitationId"`
+}
+
+type HandleGroupInvitationReq {
+	InvitationId int64 `json:"invitationId"`
+	Action       int64 `json:"action"`
+}
+
+type GroupInvitationInfo {
+	Id          int64  `json:"id"`
+	GroupId     string `json:"groupId"`
+	GroupName   string `json:"groupName"`
+	InviterId   int64  `json:"inviterId"`
+	InviterName string `json:"inviterName"`
+	InviteeId   int64  `json:"inviteeId"`
+	InviteeName string `json:"inviteeName"`
+	Message     string `json:"message"`
+	Status      int64  `json:"status"`
+	CreatedAt   int64  `json:"createdAt"`
+}
+
+type GetInvitationsReq {
+	Page     int32 `form:"page,default=1"`
+	PageSize int32 `form:"pageSize,default=20"`
+}
+
+type GetInvitationsResp {
+	List  []GroupInvitationInfo `json:"list"`
+	Total int64                 `json:"total"`
+}
+
+@server (
+	jwt:    Auth
+	group:  groupmgmt
+	prefix: /api/v1/group
+)
+service group-api {
+	@doc "创建群组"
+	@handler CreateGroup
+	post /create (CreateGroupReq) returns (Response)
+
+	@doc "解散群组"
+	@handler DismissGroup
+	post /dismiss (DismissGroupReq) returns (Response)
+
+	@doc "更新群组信息"
+	@handler UpdateGroup
+	post /update (UpdateGroupReq) returns (Response)
+
+	@doc "获取群组列表"
+	@handler GetGroupList
+	get /list (GetGroupListReq) returns (Response)
+
+	@doc "获取群组详情"
+	@handler GetGroupInfo
+	get /:groupId (GetGroupInfoReq) returns (Response)
+
+	@doc "搜索群组"
+	@handler SearchGroup
+	get /search (SearchGroupReq) returns (Response)
+
+	@doc "精确搜索群组"
+	@handler SearchGroupPrecise
+	get /search/precise (SearchGroupPreciseReq) returns (Response)
+}
+
+@server (
+	jwt:    Auth
+	group:  membermgmt
+	prefix: /api/v1/group
+)
+service group-api {
+	@doc "邀请成员"
+	@handler InviteMembers
+	post /member/invite (InviteMembersReq) returns (Response)
+
+	@doc "踢出成员"
+	@handler KickMember
+	post /member/kick (KickMemberReq) returns (Response)
+
+	@doc "退出群组"
+	@handler QuitGroup
+	post /quit (QuitGroupReq) returns (Response)
+
+	@doc "获取成员列表"
+	@handler GetMemberList
+	get /member/list (GetMemberListReq) returns (Response)
+
+	@doc "设置成员角色"
+	@handler SetMemberRole
+	post /member/role (SetMemberRoleReq) returns (Response)
+
+	@doc "设置成员禁言"
+	@handler SetMemberMute
+	post /member/mute (SetMemberMuteReq) returns (Response)
+
+	@doc "更新群组已读序列号"
+	@handler UpdateGroupReadSeq
+	post /read (UpdateGroupReadSeqReq) returns (Response)
+}
+
+@server (
+	jwt:    Auth
+	group:  invitation
+	prefix: /api/v1/group
+)
+service group-api {
+	@doc "发送入群邀请"
+	@handler SendGroupInvitation
+	post /invitation/send (SendGroupInvitationReq) returns (Response)
+
+	@doc "处理入群邀请"
+	@handler HandleGroupInvitation
+	post /invitation/handle (HandleGroupInvitationReq) returns (Response)
+
+	@doc "获取收到的邀请"
+	@handler GetReceivedInvitations
+	get /invitation/received (GetInvitationsReq) returns (Response)
+
+	@doc "获取已发送的邀请"
+	@handler GetSentInvitations
+	get /invitation/sent (GetInvitationsReq) returns (Response)
+}
+

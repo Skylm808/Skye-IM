@@ -1,0 +1,27 @@
+Name: group-api
+Host: 0.0.0.0
+Port: 10500
+
+# Etcd 服务注册
+Etcd:
+  Hosts:
+    - 127.0.0.1:2379
+  Key: group-api
+
+# JWT AccessToken 配置
+Auth:
+  AccessSecret: "Skylm-im-secret-key"
+  AccessExpire: 604800  # 7天
+
+# Group RPC 服务配置
+GroupRpc:
+  Etcd:
+    Hosts:
+      - 127.0.0.1:2379
+    Key: group.rpc
+
+# 日志配置
+Log:
+  ServiceName: group-api
+  Mode: console
+  Level: info

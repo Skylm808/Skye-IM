@@ -22,11 +22,28 @@ FriendRpc:
       - 127.0.0.1:2379
     Key: friend.rpc
 
+# Group RPC 服务配置
+GroupRpc:
+  Etcd:
+    Hosts:
+      - 127.0.0.1:2379
+    Key: group.rpc
+
 # WebSocket 配置
 WebSocket:
   PingInterval: 30      # 心跳间隔（秒）
   PongTimeout: 60       # pong 超时（秒）
   MaxMessageSize: 65536 # 最大消息大小（字节）
+
+# Redis 配置
+Redis:
+  Host: 127.0.0.1:16379
+  Type: node
+  Pass: ""
+
+# 内部推送接口鉴权（可选；设置后 group-rpc 调用需携带相同 Secret）
+PushEvent:
+  Secret: ""
 
 # 日志配置
 Log:

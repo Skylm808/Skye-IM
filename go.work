@@ -5,8 +5,12 @@ use (
 	./app/auth
 	./app/friend/api
 	./app/friend/rpc
+	./app/gateway
+	./app/group/api
+	./app/group/rpc
 	./app/message/api
 	./app/message/rpc
+	./app/upload/api
 	./app/user/api
 	./app/user/rpc
 	./app/ws

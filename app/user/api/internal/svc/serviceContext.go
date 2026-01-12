@@ -1,9 +1,7 @@
-// Code scaffolded by goctl. Safe to edit.
-// goctl 1.9.2
-
 package svc
 
 import (
+	groupModel "SkyeIM/app/group/model"
 	"SkyeIM/app/user/api/internal/config"
 	"auth/model"
 
@@ -11,14 +9,16 @@ import (
 )
 
 type ServiceContext struct {
-	Config    config.Config
-	UserModel model.UserModel
+	Config     config.Config
+	UserModel  model.UserModel
+	GroupModel groupModel.ImGroupModel
 }
 
 func NewServiceContext(c config.Config) *ServiceContext {
 	conn := sqlx.NewMysql(c.MySQL.DataSource)
 	return &ServiceContext{
-		Config:    c,
-		UserModel: model.NewUserModel(conn, c.Cache),
+		Config:     c,
+		UserModel:  model.NewUserModel(conn, c.Cache),
+		GroupModel: groupModel.NewImGroupModel(conn, c.Cache),
 	}
 }

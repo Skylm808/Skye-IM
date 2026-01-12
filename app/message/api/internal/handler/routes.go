@@ -16,10 +16,40 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 	server.AddRoutes(
 		[]rest.Route{
 			{
+				// 获取@我的消息列表
+				Method:  http.MethodGet,
+				Path:    "/at-me",
+				Handler: message.GetAtMeMessagesHandler(serverCtx),
+			},
+			{
 				// 获取会话列表（最近联系人）
 				Method:  http.MethodGet,
 				Path:    "/conversations",
 				Handler: message.GetConversationsHandler(serverCtx),
+			},
+			{
+				// 获取群聊历史消息
+				Method:  http.MethodGet,
+				Path:    "/group/history",
+				Handler: message.GetGroupMessageHistoryHandler(serverCtx),
+			},
+			{
+				// 群聊已读上报（更新readSeq）
+				Method:  http.MethodPost,
+				Path:    "/group/read",
+				Handler: message.MarkGroupReadHandler(serverCtx),
+			},
+			{
+				// 发送群聊消息（可选：主要走WS）
+				Method:  http.MethodPost,
+				Path:    "/group/send",
+				Handler: message.SendGroupMessageHandler(serverCtx),
+			},
+			{
+				// 群聊离线同步（按seq拉取）
+				Method:  http.MethodGet,
+				Path:    "/group/sync",
+				Handler: message.GetGroupSyncHandler(serverCtx),
 			},
 			{
 				// 获取与某用户的历史消息
@@ -28,13 +58,31 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 				Handler: message.GetMessageHistoryHandler(serverCtx),
 			},
 			{
-				// 标记消息为已读
+				// 私聊离线同步（拉取剩余离线消息）
+				Method:  http.MethodGet,
+				Path:    "/offline",
+				Handler: message.GetPrivateOfflineSyncHandler(serverCtx),
+			},
+			{
+				// 标记私聊消息为已读
 				Method:  http.MethodPost,
 				Path:    "/read",
 				Handler: message.MarkAsReadHandler(serverCtx),
 			},
 			{
-				// 获取未读消息数
+				// 模糊搜索聊天记录
+				Method:  http.MethodGet,
+				Path:    "/search",
+				Handler: message.SearchMessageHandler(serverCtx),
+			},
+			{
+				// 发送私聊消息（可选：主要走WS）
+				Method:  http.MethodPost,
+				Path:    "/send",
+				Handler: message.SendMessageHandler(serverCtx),
+			},
+			{
+				// 获取未读消息数（私聊）
 				Method:  http.MethodGet,
 				Path:    "/unread/count",
 				Handler: message.GetUnreadCountHandler(serverCtx),

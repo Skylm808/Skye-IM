@@ -1,0 +1,28 @@
+Name: group.rpc
+ListenOn: 0.0.0.0:9400
+Mode: dev
+
+# MySQL 配置（复用 im_auth 数据库）
+MySQL:
+  DataSource: root:630630@tcp(127.0.0.1:3306)/im_auth?charset=utf8mb4&parseTime=True&loc=Local
+
+# Redis 缓存配置（用于Model缓存）
+Cache:
+  - Host: 127.0.0.1:16379
+    Type: node
+    Pass: ""
+
+# WebSocket 服务地址
+WsServiceUrl: "127.0.0.1:10300"
+
+# 日志配置
+Log:
+  ServiceName: group-rpc
+  Mode: console
+  Level: info
+
+# Etcd配置（服务发现）
+Etcd:
+  Hosts:
+    - 127.0.0.1:2379
+  Key: group.rpc

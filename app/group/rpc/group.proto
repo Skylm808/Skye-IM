@@ -1,0 +1,412 @@
+syntax = "proto3";
+
+package group;
+
+option go_package = "./group";
+
+// Group 服务 - 群组管理
+service Group {
+    // 创建群组
+    rpc CreateGroup(CreateGroupReq) returns (CreateGroupResp);
+    
+    // 获取群组信息
+    rpc GetGroupInfo(GetGroupInfoReq) returns (GetGroupInfoResp);
+    
+    // 更新群组信息
+    rpc UpdateGroup(UpdateGroupReq) returns (UpdateGroupResp);
+    
+    // 解散群组
+    rpc DismissGroup(DismissGroupReq) returns (DismissGroupResp);
+    
+    // 邀请成员加入群组
+    rpc InviteMembers(InviteMembersReq) returns (InviteMembersResp);
+    
+    // 踢出成员
+    rpc KickMember(KickMemberReq) returns (KickMemberResp);
+    
+    // 退出群组
+    rpc QuitGroup(QuitGroupReq) returns (QuitGroupResp);
+    
+    // 获取群成员列表
+    rpc GetMemberList(GetMemberListReq) returns (GetMemberListResp);
+    
+    // 获取用户的群组列表
+    rpc GetUserGroupList(GetUserGroupListReq) returns (GetUserGroupListResp);
+    
+    // 设置成员权限
+    rpc SetMemberRole(SetMemberRoleReq) returns (SetMemberRoleResp);
+    
+    // 设置成员禁言
+    rpc SetMemberMute(SetMemberMuteReq) returns (SetMemberMuteResp);
+    
+    // 检查用户是否在群组中
+    rpc CheckMembership(CheckMembershipReq) returns (CheckMembershipResp);
+
+    // 更新群组已读进度
+    rpc UpdateGroupReadSeq(UpdateGroupReadSeqReq) returns (UpdateGroupReadSeqResp);
+
+    // 获取用户加入的群组列表（包含成员信息如ReadSeq）
+    rpc GetJoinedGroups(GetJoinedGroupsReq) returns (GetJoinedGroupsResp);
+
+    // 模糊搜索群组
+    rpc SearchGroup(SearchGroupReq) returns (SearchGroupResp);
+
+    // ==================== 群聊邀请相关 ====================
+    // 发送群聊邀请
+    rpc SendGroupInvitation(SendGroupInvitationReq) returns (SendGroupInvitationResp);
+
+    // 处理群聊邀请（同意/拒绝）
+    rpc HandleGroupInvitation(HandleGroupInvitationReq) returns (HandleGroupInvitationResp);
+
+    // 获取收到的群聊邀请列表
+    rpc GetReceivedInvitations(GetReceivedInvitationsReq) returns (GetReceivedInvitationsResp);
+
+    // 获取发出的群聊邀请列表
+    rpc GetSentInvitations(GetSentInvitationsReq) returns (GetSentInvitationsResp);
+
+    // ==================== 入群申请相关 ====================
+    // 发送入群申请
+    rpc SendJoinRequest(SendJoinRequestReq) returns (SendJoinRequestResp);
+
+    // 处理入群申请（群主/管理员）
+    rpc HandleJoinRequest(HandleJoinRequestReq) returns (HandleJoinRequestResp);
+
+    // 获取群的入群申请列表（群主/管理员查看）
+    rpc GetGroupJoinRequests(GetGroupJoinRequestsReq) returns (GetGroupJoinRequestsResp);
+
+    // 获取用户发出的入群申请
+    rpc GetSentJoinRequests(GetSentJoinRequestsReq) returns (GetSentJoinRequestsResp);
+}
+
+// ... 保持原有结构 ...
+
+message SearchGroupReq {
+    string keyword = 1;
+}
+
+message SearchGroupResp {
+    repeated GroupInfo groups = 1;
+}
+
+// ==================== 数据结构 ====================
+
+// 群组信息
+message GroupInfo {
+    int64 id = 1;                      // 数据库ID
+    string group_id = 2;               // 群组唯一标识
+    string name = 3;                   // 群名称
+    string avatar = 4;                 // 群头像
+    int64 owner_id = 5;                // 群主ID
+    string description = 6;            // 群描述
+    int32 max_members = 7;             // 最大成员数
+    int32 member_count = 8;            // 当前成员数
+    int32 status = 9;                  // 状态: 1-正常 2-已解散
+    int64 created_at = 10;             // 创建时间戳
+    int64 updated_at = 11;             // 更新时间戳
+}
+
+// 群成员信息
+message MemberInfo {
+    int64 id = 1;                      // 数据库ID
+    string group_id = 2;               // 群组ID
+    int64 user_id = 3;                 // 用户ID
+    int32 role = 4;                    // 角色: 1-群主 2-管理员 3-普通成员
+    string nickname = 5;               // 群昵称
+    int32 mute = 6;                    // 是否禁言: 0-否 1-是
+    int64 joined_at = 7;               // 加入时间戳
+    uint64 read_seq = 8;               // 已读Seq
+}
+
+// ==================== 创建群组 ====================
+
+message CreateGroupReq {
+    int64 owner_id = 1;                // 群主ID
+    string name = 2;                   // 群名称
+    string avatar = 3;                 // 群头像（可选）
+    string description = 4;            // 群描述（可选）
+    int32 max_members = 5;             // 最大成员数（默认200）
+    repeated int64 member_ids = 6;     // 初始成员ID列表（可选）
+}
+
+message CreateGroupResp {
+    GroupInfo group = 1;               // 创建的群组信息
+}
+
+// ==================== 获取群组信息 ====================
+
+message GetGroupInfoReq {
+    string group_id = 1;               // 群组ID
+    int64 user_id = 2;                 // 请求用户ID（用于权限验证）
+}
+
+message GetGroupInfoResp {
+    GroupInfo group = 1;               // 群组信息
+}
+
+// ==================== 更新群组信息 ====================
+
+message UpdateGroupReq {
+    string group_id = 1;               // 群组ID
+    int64 operator_id = 2;             // 操作者ID（需要是群主或管理员）
+    string name = 3;                   // 新群名称（可选）
+    string avatar = 4;                 // 新群头像（可选）
+    string description = 5;            // 新群描述（可选）
+    int32 max_members = 6;             // 新最大成员数（可选）
+}
+
+message UpdateGroupResp {
+    GroupInfo group = 1;               // 更新后的群组信息
+}
+
+// ==================== 解散群组 ====================
+
+message DismissGroupReq {
+    string group_id = 1;               // 群组ID
+    int64 operator_id = 2;             // 操作者ID（必须是群主）
+}
+
+message DismissGroupResp {
+    bool success = 1;                  // 是否成功
+}
+
+// ==================== 邀请成员 ====================
+
+message InviteMembersReq {
+    string group_id = 1;               // 群组ID
+    int64 inviter_id = 2;              // 邀请者ID
+    repeated int64 member_ids = 3;     // 被邀请的成员ID列表
+}
+
+message InviteMembersResp {
+    int32 success_count = 1;           // 成功邀请的人数
+    repeated int64 failed_ids = 2;     // 邀请失败的用户ID列表
+}
+
+// ==================== 踢出成员 ====================
+
+message KickMemberReq {
+    string group_id = 1;               // 群组ID
+    int64 operator_id = 2;             // 操作者ID（需要是群主或管理员）
+    int64 member_id = 3;               // 被踢出的成员ID
+}
+
+message KickMemberResp {
+    bool success = 1;                  // 是否成功
+}
+
+// ==================== 退出群组 ====================
+
+message QuitGroupReq {
+    string group_id = 1;               // 群组ID
+    int64 user_id = 2;                 // 用户ID
+}
+
+message QuitGroupResp {
+    bool success = 1;                  // 是否成功
+}
+
+// ==================== 获取成员列表 ====================
+
+message GetMemberListReq {
+    string group_id = 1;               // 群组ID
+    int64 user_id = 2;                 // 请求用户ID（用于权限验证）
+    int32 page = 3;                    // 页码（从1开始）
+    int32 page_size = 4;               // 每页数量
+}
+
+message GetMemberListResp {
+    repeated MemberInfo members = 1;   // 成员列表
+    int32 total = 2;                   // 总成员数
+}
+
+// ==================== 获取用户群组列表 ====================
+
+message GetUserGroupListReq {
+    int64 user_id = 1;                 // 用户ID
+    int32 page = 2;                    // 页码（从1开始）
+    int32 page_size = 3;               // 每页数量
+}
+
+message GetUserGroupListResp {
+    repeated GroupInfo groups = 1;     // 群组列表
+    int32 total = 2;                   // 总群组数
+}
+
+// ==================== 设置成员权限 ====================
+
+message SetMemberRoleReq {
+    string group_id = 1;               // 群组ID
+    int64 operator_id = 2;             // 操作者ID（需要是群主）
+    int64 member_id = 3;               // 成员ID
+    int32 role = 4;                    // 新角色: 1-群主 2-管理员 3-普通成员
+}
+
+message SetMemberRoleResp {
+    bool success = 1;                  // 是否成功
+}
+
+// ==================== 设置成员禁言 ====================
+
+message SetMemberMuteReq {
+    string group_id = 1;               // 群组ID
+    int64 operator_id = 2;             // 操作者ID（需要是群主或管理员）
+    int64 member_id = 3;               // 成员ID
+    int32 mute = 4;                    // 是否禁言: 0-否 1-是
+}
+
+message SetMemberMuteResp {
+    bool success = 1;                  // 是否成功
+}
+
+// ==================== 检查成员资格 ====================
+
+message CheckMembershipReq {
+    string group_id = 1;               // 群组ID
+    int64 user_id = 2;                 // 用户ID
+}
+
+message CheckMembershipResp {
+    bool is_member = 1;                // 是否是成员
+    MemberInfo member = 2;             // 成员信息（如果是成员）
+}
+
+// ==================== 更新群组已读进度 ====================
+
+message UpdateGroupReadSeqReq {
+    string group_id = 1;               // 群组ID
+    int64 user_id = 2;                 // 用户ID
+    uint64 read_seq = 3;               // 已读Seq
+}
+
+message UpdateGroupReadSeqResp {
+    bool success = 1;
+}
+
+// ==================== 获取用户加入的群组列表（详细） ====================
+
+message GetJoinedGroupsReq {
+    int64 user_id = 1;                 // 用户ID
+}
+
+message GetJoinedGroupsResp {
+    repeated MemberInfo list = 1;      // 成员信息列表
+}
+
+// ==================== 群聊邀请相关 ====================
+
+// 群聊邀请信息
+message GroupInvitationInfo {
+    int64 id = 1;                      // 邀请ID
+    string group_id = 2;               // 群组ID  
+    int64 inviter_id = 3;              // 邀请人ID
+    int64 invitee_id = 4;              // 被邀请人ID
+    string message = 5;                // 邀请消息
+    int64 status = 6;                  // 0-待处理 1-已同意 2-已拒绝
+    int64 created_at = 7;              // 创建时间
+}
+
+// 发送群聊邀请
+message SendGroupInvitationReq {
+    string group_id = 1;               // 群组ID
+    int64 inviter_id = 2;              // 邀请人ID
+    int64 invitee_id = 3;              // 被邀请人ID
+    string message = 4;                // 邀请消息
+}
+
+message SendGroupInvitationResp {
+    int64 invitation_id = 1;           // 邀请ID
+}
+
+// 处理群聊邀请
+message HandleGroupInvitationReq {
+    int64 user_id = 1;                 // 当前用户ID（被邀请人）
+    int64 invitation_id = 2;           // 邀请ID
+    int64 action = 3;                  // 1-同意 2-拒绝
+}
+
+message HandleGroupInvitationResp {
+}
+
+// 获取收到的邀请
+message GetReceivedInvitationsReq {
+    int64 user_id = 1;                 // 用户ID
+    int64 page = 2;                    // 页码
+    int64 page_size = 3;               // 每页数量
+}
+
+message GetReceivedInvitationsResp {
+    repeated GroupInvitationInfo list = 1;
+    int64 total = 2;
+}
+
+// 获取发出的邀请
+message GetSentInvitationsReq {
+    int64 user_id = 1;                 // 用户ID
+    int64 page = 2;                    // 页码
+    int64 page_size = 3;               // 每页数量
+}
+
+message GetSentInvitationsResp {
+    repeated GroupInvitationInfo list = 1;
+    int64 total = 2;
+}
+
+// ==================== 入群申请相关 ====================
+
+// 入群申请信息
+message JoinRequestInfo {
+    int64 id = 1;                      // 申请ID
+    string group_id = 2;               // 群组ID
+    int64 user_id = 3;                 // 申请人ID
+    string message = 4;                // 申请理由
+    int64 status = 5;                  // 0-待处理 1-已同意 2-已拒绝
+    int64 handler_id = 6;              // 处理人ID
+    int64 created_at = 7;              // 创建时间
+}
+
+// 发送入群申请
+message SendJoinRequestReq {
+    string group_id = 1;               // 群组ID
+    int64 user_id = 2;                 // 申请人ID
+    string message = 3;                // 申请理由
+}
+
+message SendJoinRequestResp {
+    int64 request_id = 1;              // 申请ID
+}
+
+// 处理入群申请
+message HandleJoinRequestReq {
+    int64 operator_id = 1;             // 操作者ID（群主/管理员）
+    int64 request_id = 2;              // 申请ID
+    int64 action = 3;                  // 1-同意 2-拒绝
+}
+
+message HandleJoinRequestResp {
+    bool success = 1;
+}
+
+// 获取群的入群申请列表（群主/管理员查看）
+message GetGroupJoinRequestsReq {
+    string group_id = 1;               // 群组ID
+    int64 operator_id = 2;             // 操作者ID（用于权限验证）
+    int64 page = 3;                    // 页码
+    int64 page_size = 4;               // 每页数量
+}
+
+message GetGroupJoinRequestsResp {
+    repeated JoinRequestInfo list = 1;
+    int64 total = 2;
+}
+
+// 获取用户发出的入群申请
+message GetSentJoinRequestsReq {
+    int64 user_id = 1;                 // 用户ID
+    int64 page = 2;                    // 页码
+    int64 page_size = 3;               // 每页数量
+}
+
+message GetSentJoinRequestsResp {
+    repeated JoinRequestInfo list = 1;
+    int64 total = 2;
+}

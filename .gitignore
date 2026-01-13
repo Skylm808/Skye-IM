@@ -16,6 +16,7 @@ vendor/
 
 # MinIO 数据存储（用户上传的文件）
 **/minio-data/
+app/upload/minio-data/
 
 # etcd 数据
 **/etcd-data/

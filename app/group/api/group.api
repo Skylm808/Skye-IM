@@ -266,3 +266,66 @@ service group-api {
 	get /invitation/sent (GetInvitationsReq) returns (Response)
 }
 
+// ==================== 入群申请相关类型定义 ====================
+type SendJoinRequestReq {
+	GroupId string `json:"groupId"`
+	Message string `json:"message,optional"`
+}
+
+type SendJoinRequestResp {
+	RequestId int64 `json:"requestId"`
+}
+
+type HandleJoinRequestReq {
+	RequestId int64 `json:"requestId"`
+	Action    int64 `json:"action"` // 1-同意 2-拒绝
+}
+
+type JoinRequestInfo {
+	Id          int64  `json:"id"`
+	GroupId     string `json:"groupId"`
+	GroupName   string `json:"groupName"`
+	GroupAvatar string `json:"groupAvatar"`
+	UserId      int64  `json:"userId"`
+	UserName    string `json:"userName"`
+	UserAvatar  string `json:"userAvatar"`
+	Message     string `json:"message"`
+	Status      int64  `json:"status"`
+	HandlerId   int64  `json:"handlerId,optional"`
+	CreatedAt   int64  `json:"createdAt"`
+}
+
+type GetJoinRequestsReq {
+	Page     int32  `form:"page,default=1"`
+	PageSize int32  `form:"pageSize,default=20"`
+	GroupId  string `form:"groupId,optional"` // 管理员查询时需要
+}
+
+type GetJoinRequestsResp {
+	List  []JoinRequestInfo `json:"list"`
+	Total int64             `json:"total"`
+}
+
+@server (
+	jwt:    Auth
+	group:  joinrequest
+	prefix: /api/v1/group
+)
+service group-api {
+	@doc "发送入群申请"
+	@handler SendJoinRequest
+	post /join/request (SendJoinRequestReq) returns (Response)
+
+	@doc "处理入群申请"
+	@handler HandleJoinRequest
+	post /join/handle (HandleJoinRequestReq) returns (Response)
+
+	@doc "获取群组的入群申请列表"
+	@handler GetGroupJoinRequests
+	get /join/requests (GetJoinRequestsReq) returns (Response)
+
+	@doc "获取我发出的入群申请"
+	@handler GetSentJoinRequests
+	get /join/sent (GetJoinRequestsReq) returns (Response)
+}
+

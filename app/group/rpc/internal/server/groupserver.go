@@ -136,3 +136,27 @@ func (s *GroupServer) GetSentInvitations(ctx context.Context, in *group.GetSentI
 	l := logic.NewGetSentInvitationsLogic(ctx, s.svcCtx)
 	return l.GetSentInvitations(in)
 }
+
+// ==================== 入群申请相关 ====================
+func (s *GroupServer) SendJoinRequest(ctx context.Context, in *group.SendJoinRequestReq) (*group.SendJoinRequestResp, error) {
+	l := logic.NewSendJoinRequestLogic(ctx, s.svcCtx)
+	return l.SendJoinRequest(in)
+}
+
+// 处理入群申请（群主/管理员）
+func (s *GroupServer) HandleJoinRequest(ctx context.Context, in *group.HandleJoinRequestReq) (*group.HandleJoinRequestResp, error) {
+	l := logic.NewHandleJoinRequestLogic(ctx, s.svcCtx)
+	return l.HandleJoinRequest(in)
+}
+
+// 获取群的入群申请列表（群主/管理员查看）
+func (s *GroupServer) GetGroupJoinRequests(ctx context.Context, in *group.GetGroupJoinRequestsReq) (*group.GetGroupJoinRequestsResp, error) {
+	l := logic.NewGetGroupJoinRequestsLogic(ctx, s.svcCtx)
+	return l.GetGroupJoinRequests(in)
+}
+
+// 获取用户发出的入群申请
+func (s *GroupServer) GetSentJoinRequests(ctx context.Context, in *group.GetSentJoinRequestsReq) (*group.GetSentJoinRequestsResp, error) {
+	l := logic.NewGetSentJoinRequestsLogic(ctx, s.svcCtx)
+	return l.GetSentJoinRequests(in)
+}

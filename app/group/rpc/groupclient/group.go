@@ -22,6 +22,8 @@ type (
 	DismissGroupResp           = group.DismissGroupResp
 	GetGroupInfoReq            = group.GetGroupInfoReq
 	GetGroupInfoResp           = group.GetGroupInfoResp
+	GetGroupJoinRequestsReq    = group.GetGroupJoinRequestsReq
+	GetGroupJoinRequestsResp   = group.GetGroupJoinRequestsResp
 	GetJoinedGroupsReq         = group.GetJoinedGroupsReq
 	GetJoinedGroupsResp        = group.GetJoinedGroupsResp
 	GetMemberListReq           = group.GetMemberListReq
@@ -30,14 +32,19 @@ type (
 	GetReceivedInvitationsResp = group.GetReceivedInvitationsResp
 	GetSentInvitationsReq      = group.GetSentInvitationsReq
 	GetSentInvitationsResp     = group.GetSentInvitationsResp
+	GetSentJoinRequestsReq     = group.GetSentJoinRequestsReq
+	GetSentJoinRequestsResp    = group.GetSentJoinRequestsResp
 	GetUserGroupListReq        = group.GetUserGroupListReq
 	GetUserGroupListResp       = group.GetUserGroupListResp
 	GroupInfo                  = group.GroupInfo
 	GroupInvitationInfo        = group.GroupInvitationInfo
 	HandleGroupInvitationReq   = group.HandleGroupInvitationReq
 	HandleGroupInvitationResp  = group.HandleGroupInvitationResp
+	HandleJoinRequestReq       = group.HandleJoinRequestReq
+	HandleJoinRequestResp      = group.HandleJoinRequestResp
 	InviteMembersReq           = group.InviteMembersReq
 	InviteMembersResp          = group.InviteMembersResp
+	JoinRequestInfo            = group.JoinRequestInfo
 	KickMemberReq              = group.KickMemberReq
 	KickMemberResp             = group.KickMemberResp
 	MemberInfo                 = group.MemberInfo
@@ -47,6 +54,8 @@ type (
 	SearchGroupResp            = group.SearchGroupResp
 	SendGroupInvitationReq     = group.SendGroupInvitationReq
 	SendGroupInvitationResp    = group.SendGroupInvitationResp
+	SendJoinRequestReq         = group.SendJoinRequestReq
+	SendJoinRequestResp        = group.SendJoinRequestResp
 	SetMemberMuteReq           = group.SetMemberMuteReq
 	SetMemberMuteResp          = group.SetMemberMuteResp
 	SetMemberRoleReq           = group.SetMemberRoleReq
@@ -95,6 +104,14 @@ type (
 		GetReceivedInvitations(ctx context.Context, in *GetReceivedInvitationsReq, opts ...grpc.CallOption) (*GetReceivedInvitationsResp, error)
 		// 获取发出的群聊邀请列表
 		GetSentInvitations(ctx context.Context, in *GetSentInvitationsReq, opts ...grpc.CallOption) (*GetSentInvitationsResp, error)
+		// ==================== 入群申请相关 ====================
+		SendJoinRequest(ctx context.Context, in *SendJoinRequestReq, opts ...grpc.CallOption) (*SendJoinRequestResp, error)
+		// 处理入群申请（群主/管理员）
+		HandleJoinRequest(ctx context.Context, in *HandleJoinRequestReq, opts ...grpc.CallOption) (*HandleJoinRequestResp, error)
+		// 获取群的入群申请列表（群主/管理员查看）
+		GetGroupJoinRequests(ctx context.Context, in *GetGroupJoinRequestsReq, opts ...grpc.CallOption) (*GetGroupJoinRequestsResp, error)
+		// 获取用户发出的入群申请
+		GetSentJoinRequests(ctx context.Context, in *GetSentJoinRequestsReq, opts ...grpc.CallOption) (*GetSentJoinRequestsResp, error)
 	}
 
 	defaultGroup struct {
@@ -220,4 +237,28 @@ func (m *defaultGroup) GetReceivedInvitations(ctx context.Context, in *GetReceiv
 func (m *defaultGroup) GetSentInvitations(ctx context.Context, in *GetSentInvitationsReq, opts ...grpc.CallOption) (*GetSentInvitationsResp, error) {
 	client := group.NewGroupClient(m.cli.Conn())
 	return client.GetSentInvitations(ctx, in, opts...)
+}
+
+// ==================== 入群申请相关 ====================
+func (m *defaultGroup) SendJoinRequest(ctx context.Context, in *SendJoinRequestReq, opts ...grpc.CallOption) (*SendJoinRequestResp, error) {
+	client := group.NewGroupClient(m.cli.Conn())
+	return client.SendJoinRequest(ctx, in, opts...)
+}
+
+// 处理入群申请（群主/管理员）
+func (m *defaultGroup) HandleJoinRequest(ctx context.Context, in *HandleJoinRequestReq, opts ...grpc.CallOption) (*HandleJoinRequestResp, error) {
+	client := group.NewGroupClient(m.cli.Conn())
+	return client.HandleJoinRequest(ctx, in, opts...)
+}
+
+// 获取群的入群申请列表（群主/管理员查看）
+func (m *defaultGroup) GetGroupJoinRequests(ctx context.Context, in *GetGroupJoinRequestsReq, opts ...grpc.CallOption) (*GetGroupJoinRequestsResp, error) {
+	client := group.NewGroupClient(m.cli.Conn())
+	return client.GetGroupJoinRequests(ctx, in, opts...)
+}
+
+// 获取用户发出的入群申请
+func (m *defaultGroup) GetSentJoinRequests(ctx context.Context, in *GetSentJoinRequestsReq, opts ...grpc.CallOption) (*GetSentJoinRequestsResp, error) {
+	client := group.NewGroupClient(m.cli.Conn())
+	return client.GetSentJoinRequests(ctx, in, opts...)
 }

@@ -8,6 +8,7 @@ import (
 
 	groupmgmt "SkyeIM/app/group/api/internal/handler/groupmgmt"
 	invitation "SkyeIM/app/group/api/internal/handler/invitation"
+	joinrequest "SkyeIM/app/group/api/internal/handler/joinrequest"
 	membermgmt "SkyeIM/app/group/api/internal/handler/membermgmt"
 	"SkyeIM/app/group/api/internal/svc"
 
@@ -18,43 +19,43 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 	server.AddRoutes(
 		[]rest.Route{
 			{
-				// Get group info
+				// 获取群组详情
 				Method:  http.MethodGet,
 				Path:    "/:groupId",
 				Handler: groupmgmt.GetGroupInfoHandler(serverCtx),
 			},
 			{
-				// Create group
+				// 创建群组
 				Method:  http.MethodPost,
 				Path:    "/create",
 				Handler: groupmgmt.CreateGroupHandler(serverCtx),
 			},
 			{
-				// Dismiss group
+				// 解散群组
 				Method:  http.MethodPost,
 				Path:    "/dismiss",
 				Handler: groupmgmt.DismissGroupHandler(serverCtx),
 			},
 			{
-				// Get group list
+				// 获取群组列表
 				Method:  http.MethodGet,
 				Path:    "/list",
 				Handler: groupmgmt.GetGroupListHandler(serverCtx),
 			},
 			{
-				// Search groups
+				// 搜索群组
 				Method:  http.MethodGet,
 				Path:    "/search",
 				Handler: groupmgmt.SearchGroupHandler(serverCtx),
 			},
 			{
-				// Precise group search
+				// 精确搜索群组
 				Method:  http.MethodGet,
 				Path:    "/search/precise",
 				Handler: groupmgmt.SearchGroupPreciseHandler(serverCtx),
 			},
 			{
-				// Update group
+				// 更新群组信息
 				Method:  http.MethodPost,
 				Path:    "/update",
 				Handler: groupmgmt.UpdateGroupHandler(serverCtx),
@@ -67,25 +68,25 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 	server.AddRoutes(
 		[]rest.Route{
 			{
-				// Handle group invitation
+				// 处理入群邀请
 				Method:  http.MethodPost,
 				Path:    "/invitation/handle",
 				Handler: invitation.HandleGroupInvitationHandler(serverCtx),
 			},
 			{
-				// Get received invitations
+				// 获取收到的邀请
 				Method:  http.MethodGet,
 				Path:    "/invitation/received",
 				Handler: invitation.GetReceivedInvitationsHandler(serverCtx),
 			},
 			{
-				// Send group invitation
+				// 发送入群邀请
 				Method:  http.MethodPost,
 				Path:    "/invitation/send",
 				Handler: invitation.SendGroupInvitationHandler(serverCtx),
 			},
 			{
-				// Get sent invitations
+				// 获取已发送的邀请
 				Method:  http.MethodGet,
 				Path:    "/invitation/sent",
 				Handler: invitation.GetSentInvitationsHandler(serverCtx),
@@ -98,43 +99,74 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 	server.AddRoutes(
 		[]rest.Route{
 			{
-				// Invite members
+				// 处理入群申请
+				Method:  http.MethodPost,
+				Path:    "/join/handle",
+				Handler: joinrequest.HandleJoinRequestHandler(serverCtx),
+			},
+			{
+				// 发送入群申请
+				Method:  http.MethodPost,
+				Path:    "/join/request",
+				Handler: joinrequest.SendJoinRequestHandler(serverCtx),
+			},
+			{
+				// 获取群组的入群申请列表
+				Method:  http.MethodGet,
+				Path:    "/join/requests",
+				Handler: joinrequest.GetGroupJoinRequestsHandler(serverCtx),
+			},
+			{
+				// 获取我发出的入群申请
+				Method:  http.MethodGet,
+				Path:    "/join/sent",
+				Handler: joinrequest.GetSentJoinRequestsHandler(serverCtx),
+			},
+		},
+		rest.WithJwt(serverCtx.Config.Auth.AccessSecret),
+		rest.WithPrefix("/api/v1/group"),
+	)
+
+	server.AddRoutes(
+		[]rest.Route{
+			{
+				// 邀请成员
 				Method:  http.MethodPost,
 				Path:    "/member/invite",
 				Handler: membermgmt.InviteMembersHandler(serverCtx),
 			},
 			{
-				// Kick member
+				// 踢出成员
 				Method:  http.MethodPost,
 				Path:    "/member/kick",
 				Handler: membermgmt.KickMemberHandler(serverCtx),
 			},
 			{
-				// Get member list
+				// 获取成员列表
 				Method:  http.MethodGet,
 				Path:    "/member/list",
 				Handler: membermgmt.GetMemberListHandler(serverCtx),
 			},
 			{
-				// Set member mute
+				// 设置成员禁言
 				Method:  http.MethodPost,
 				Path:    "/member/mute",
 				Handler: membermgmt.SetMemberMuteHandler(serverCtx),
 			},
 			{
-				// Set member role
+				// 设置成员角色
 				Method:  http.MethodPost,
 				Path:    "/member/role",
 				Handler: membermgmt.SetMemberRoleHandler(serverCtx),
 			},
 			{
-				// Quit group
+				// 退出群组
 				Method:  http.MethodPost,
 				Path:    "/quit",
 				Handler: membermgmt.QuitGroupHandler(serverCtx),
 			},
 			{
-				// Update group read seq
+				// 更新群组已读序列号
 				Method:  http.MethodPost,
 				Path:    "/read",
 				Handler: membermgmt.UpdateGroupReadSeqHandler(serverCtx),

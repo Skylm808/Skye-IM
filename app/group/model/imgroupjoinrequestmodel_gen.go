@@ -24,8 +24,8 @@ var (
 	imGroupJoinRequestRowsExpectAutoSet   = strings.Join(stringx.Remove(imGroupJoinRequestFieldNames, "`id`", "`create_at`", "`create_time`", "`created_at`", "`update_at`", "`update_time`", "`updated_at`"), ",")
 	imGroupJoinRequestRowsWithPlaceHolder = strings.Join(stringx.Remove(imGroupJoinRequestFieldNames, "`id`", "`create_at`", "`create_time`", "`created_at`", "`update_at`", "`update_time`", "`updated_at`"), "=?,") + "=?"
 
-	cacheImGroupJoinRequestIdPrefix                  = "cache:imGroupJoinRequest:id:"
-	cacheImGroupJoinRequestGroupIdUserIdStatusPrefix = "cache:imGroupJoinRequest:groupId:userId:status:"
+	cacheImAuthImGroupJoinRequestIdPrefix                  = "cache:imAuth:imGroupJoinRequest:id:"
+	cacheImAuthImGroupJoinRequestGroupIdUserIdStatusPrefix = "cache:imAuth:imGroupJoinRequest:groupId:userId:status:"
 )
 
 type (
@@ -67,19 +67,19 @@ func (m *defaultImGroupJoinRequestModel) Delete(ctx context.Context, id uint64) 
 		return err
 	}
 
-	imGroupJoinRequestGroupIdUserIdStatusKey := fmt.Sprintf("%s%v:%v:%v", cacheImGroupJoinRequestGroupIdUserIdStatusPrefix, data.GroupId, data.UserId, data.Status)
-	imGroupJoinRequestIdKey := fmt.Sprintf("%s%v", cacheImGroupJoinRequestIdPrefix, id)
+	imAuthImGroupJoinRequestGroupIdUserIdStatusKey := fmt.Sprintf("%s%v:%v:%v", cacheImAuthImGroupJoinRequestGroupIdUserIdStatusPrefix, data.GroupId, data.UserId, data.Status)
+	imAuthImGroupJoinRequestIdKey := fmt.Sprintf("%s%v", cacheImAuthImGroupJoinRequestIdPrefix, id)
 	_, err = m.ExecCtx(ctx, func(ctx context.Context, conn sqlx.SqlConn) (result sql.Result, err error) {
 		query := fmt.Sprintf("delete from %s where `id` = ?", m.table)
 		return conn.ExecCtx(ctx, query, id)
-	}, imGroupJoinRequestGroupIdUserIdStatusKey, imGroupJoinRequestIdKey)
+	}, imAuthImGroupJoinRequestGroupIdUserIdStatusKey, imAuthImGroupJoinRequestIdKey)
 	return err
 }
 
 func (m *defaultImGroupJoinRequestModel) FindOne(ctx context.Context, id uint64) (*ImGroupJoinRequest, error) {
-	imGroupJoinRequestIdKey := fmt.Sprintf("%s%v", cacheImGroupJoinRequestIdPrefix, id)
+	imAuthImGroupJoinRequestIdKey := fmt.Sprintf("%s%v", cacheImAuthImGroupJoinRequestIdPrefix, id)
 	var resp ImGroupJoinRequest
-	err := m.QueryRowCtx(ctx, &resp, imGroupJoinRequestIdKey, func(ctx context.Context, conn sqlx.SqlConn, v any) error {
+	err := m.QueryRowCtx(ctx, &resp, imAuthImGroupJoinRequestIdKey, func(ctx context.Context, conn sqlx.SqlConn, v any) error {
 		query := fmt.Sprintf("select %s from %s where `id` = ? limit 1", imGroupJoinRequestRows, m.table)
 		return conn.QueryRowCtx(ctx, v, query, id)
 	})
@@ -94,9 +94,9 @@ func (m *defaultImGroupJoinRequestModel) FindOne(ctx context.Context, id uint64)
 }
 
 func (m *defaultImGroupJoinRequestModel) FindOneByGroupIdUserIdStatus(ctx context.Context, groupId string, userId uint64, status int64) (*ImGroupJoinRequest, error) {
-	imGroupJoinRequestGroupIdUserIdStatusKey := fmt.Sprintf("%s%v:%v:%v", cacheImGroupJoinRequestGroupIdUserIdStatusPrefix, groupId, userId, status)
+	imAuthImGroupJoinRequestGroupIdUserIdStatusKey := fmt.Sprintf("%s%v:%v:%v", cacheImAuthImGroupJoinRequestGroupIdUserIdStatusPrefix, groupId, userId, status)
 	var resp ImGroupJoinRequest
-	err := m.QueryRowIndexCtx(ctx, &resp, imGroupJoinRequestGroupIdUserIdStatusKey, m.formatPrimary, func(ctx context.Context, conn sqlx.SqlConn, v any) (i any, e error) {
+	err := m.QueryRowIndexCtx(ctx, &resp, imAuthImGroupJoinRequestGroupIdUserIdStatusKey, m.formatPrimary, func(ctx context.Context, conn sqlx.SqlConn, v any) (i any, e error) {
 		query := fmt.Sprintf("select %s from %s where `group_id` = ? and `user_id` = ? and `status` = ? limit 1", imGroupJoinRequestRows, m.table)
 		if err := conn.QueryRowCtx(ctx, &resp, query, groupId, userId, status); err != nil {
 			return nil, err
@@ -114,12 +114,12 @@ func (m *defaultImGroupJoinRequestModel) FindOneByGroupIdUserIdStatus(ctx contex
 }
 
 func (m *defaultImGroupJoinRequestModel) Insert(ctx context.Context, data *ImGroupJoinRequest) (sql.Result, error) {
-	imGroupJoinRequestGroupIdUserIdStatusKey := fmt.Sprintf("%s%v:%v:%v", cacheImGroupJoinRequestGroupIdUserIdStatusPrefix, data.GroupId, data.UserId, data.Status)
-	imGroupJoinRequestIdKey := fmt.Sprintf("%s%v", cacheImGroupJoinRequestIdPrefix, data.Id)
+	imAuthImGroupJoinRequestGroupIdUserIdStatusKey := fmt.Sprintf("%s%v:%v:%v", cacheImAuthImGroupJoinRequestGroupIdUserIdStatusPrefix, data.GroupId, data.UserId, data.Status)
+	imAuthImGroupJoinRequestIdKey := fmt.Sprintf("%s%v", cacheImAuthImGroupJoinRequestIdPrefix, data.Id)
 	ret, err := m.ExecCtx(ctx, func(ctx context.Context, conn sqlx.SqlConn) (result sql.Result, err error) {
 		query := fmt.Sprintf("insert into %s (%s) values (?, ?, ?, ?, ?)", m.table, imGroupJoinRequestRowsExpectAutoSet)
 		return conn.ExecCtx(ctx, query, data.GroupId, data.UserId, data.Message, data.Status, data.HandlerId)
-	}, imGroupJoinRequestGroupIdUserIdStatusKey, imGroupJoinRequestIdKey)
+	}, imAuthImGroupJoinRequestGroupIdUserIdStatusKey, imAuthImGroupJoinRequestIdKey)
 	return ret, err
 }
 
@@ -129,17 +129,17 @@ func (m *defaultImGroupJoinRequestModel) Update(ctx context.Context, newData *Im
 		return err
 	}
 
-	imGroupJoinRequestGroupIdUserIdStatusKey := fmt.Sprintf("%s%v:%v:%v", cacheImGroupJoinRequestGroupIdUserIdStatusPrefix, data.GroupId, data.UserId, data.Status)
-	imGroupJoinRequestIdKey := fmt.Sprintf("%s%v", cacheImGroupJoinRequestIdPrefix, data.Id)
+	imAuthImGroupJoinRequestGroupIdUserIdStatusKey := fmt.Sprintf("%s%v:%v:%v", cacheImAuthImGroupJoinRequestGroupIdUserIdStatusPrefix, data.GroupId, data.UserId, data.Status)
+	imAuthImGroupJoinRequestIdKey := fmt.Sprintf("%s%v", cacheImAuthImGroupJoinRequestIdPrefix, data.Id)
 	_, err = m.ExecCtx(ctx, func(ctx context.Context, conn sqlx.SqlConn) (result sql.Result, err error) {
 		query := fmt.Sprintf("update %s set %s where `id` = ?", m.table, imGroupJoinRequestRowsWithPlaceHolder)
 		return conn.ExecCtx(ctx, query, newData.GroupId, newData.UserId, newData.Message, newData.Status, newData.HandlerId, newData.Id)
-	}, imGroupJoinRequestGroupIdUserIdStatusKey, imGroupJoinRequestIdKey)
+	}, imAuthImGroupJoinRequestGroupIdUserIdStatusKey, imAuthImGroupJoinRequestIdKey)
 	return err
 }
 
 func (m *defaultImGroupJoinRequestModel) formatPrimary(primary any) string {
-	return fmt.Sprintf("%s%v", cacheImGroupJoinRequestIdPrefix, primary)
+	return fmt.Sprintf("%s%v", cacheImAuthImGroupJoinRequestIdPrefix, primary)
 }
 
 func (m *defaultImGroupJoinRequestModel) queryPrimary(ctx context.Context, conn sqlx.SqlConn, v, primary any) error {

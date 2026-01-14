@@ -43,6 +43,17 @@ type GetInvitationsResp struct {
 	Total int64                 `json:"total"`
 }
 
+type GetJoinRequestsReq struct {
+	Page     int32  `form:"page,default=1"`
+	PageSize int32  `form:"pageSize,default=20"`
+	GroupId  string `form:"groupId,optional"` // 管理员查询时需要
+}
+
+type GetJoinRequestsResp struct {
+	List  []JoinRequestInfo `json:"list"`
+	Total int64             `json:"total"`
+}
+
 type GetMemberListReq struct {
 	GroupId  string `form:"groupId"`
 	Page     int32  `form:"page,default=1"`
@@ -85,6 +96,11 @@ type HandleGroupInvitationReq struct {
 	Action       int64 `json:"action"`
 }
 
+type HandleJoinRequestReq struct {
+	RequestId int64 `json:"requestId"`
+	Action    int64 `json:"action"` // 1-同意 2-拒绝
+}
+
 type InviteMembersReq struct {
 	GroupId   string  `json:"groupId"`
 	MemberIds []int64 `json:"memberIds"`
@@ -93,6 +109,20 @@ type InviteMembersReq struct {
 type InviteMembersResp struct {
 	SuccessCount int32   `json:"successCount"`
 	FailedIds    []int64 `json:"failedIds"`
+}
+
+type JoinRequestInfo struct {
+	Id          int64  `json:"id"`
+	GroupId     string `json:"groupId"`
+	GroupName   string `json:"groupName"`
+	GroupAvatar string `json:"groupAvatar"`
+	UserId      int64  `json:"userId"`
+	UserName    string `json:"userName"`
+	UserAvatar  string `json:"userAvatar"`
+	Message     string `json:"message"`
+	Status      int64  `json:"status"`
+	HandlerId   int64  `json:"handlerId,optional"`
+	CreatedAt   int64  `json:"createdAt"`
 }
 
 type KickMemberReq struct {
@@ -142,6 +172,15 @@ type SendGroupInvitationReq struct {
 
 type SendGroupInvitationResp struct {
 	InvitationId int64 `json:"invitationId"`
+}
+
+type SendJoinRequestReq struct {
+	GroupId string `json:"groupId"`
+	Message string `json:"message,optional"`
+}
+
+type SendJoinRequestResp struct {
+	RequestId int64 `json:"requestId"`
 }
 
 type SetMemberMuteReq struct {

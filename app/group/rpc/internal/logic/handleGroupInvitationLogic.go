@@ -65,11 +65,18 @@ func (l *HandleGroupInvitationLogic) HandleGroupInvitation(in *group.HandleGroup
 			return &group.HandleGroupInvitationResp{}, nil // 已经是成员，直接返回成功
 		}
 
-		// 获取群组信息 checks limits
+		// 获取群组信息并检查状态和成员上限
 		groupInfo, err := l.svcCtx.ImGroupModel.FindOneByGroupId(l.ctx, invitation.GroupId)
 		if err != nil {
 			return nil, err
 		}
+
+		// 检查群组是否已解散
+		if groupInfo.Status != 1 {
+			return nil, errors.New("群组已解散，无法加入")
+		}
+
+		// 检查群成员是否已满
 		if groupInfo.MemberCount >= groupInfo.MaxMembers {
 			return nil, errors.New("群成员已满")
 		}

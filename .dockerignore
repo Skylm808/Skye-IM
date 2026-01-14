@@ -1,0 +1,32 @@
+# Git
+.git
+.gitignore
+
+# IDE
+.idea
+.vscode
+*.swp
+*.swo
+
+# 文档
+README.md
+LICENSE
+*.md
+interview_docs/
+
+# 测试文件
+*_test.go
+
+# 临时文件
+*.log
+*.tmp
+
+# 依赖
+vendor/
+
+# 构建产物
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib

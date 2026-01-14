@@ -24,3 +24,7 @@ app/upload/minio-data/
 # 其他运行时数据
 *.data
 *.db
+
+# 一些面试问答
+interview_docs
+docs

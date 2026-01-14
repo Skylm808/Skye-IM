@@ -39,18 +39,6 @@ type AckMessage struct {
 	Timestamp int64  `json:"timestamp"`
 }
 
-// BroadcastMessage 广播消息
-type BroadcastMessage struct {
-	Type string      `json:"type"`
-	Data interface{} `json:"data"`
-}
-
-// PrivateMessage 私聊消息通道数据
-type PrivateMessage struct {
-	ToUserId int64
-	Message  *Message
-}
-
 // GroupMessage 群组消息通道数据
 type GroupMessage struct {
 	GroupId      string

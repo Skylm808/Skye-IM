@@ -214,7 +214,7 @@ func (h *WsHandler) pushOfflineMessages(client *conn.Client) {
 	}
 
 	select {
-	case client.SendChannel() <- &conn.BroadcastMessage{Type: "offline_summary", Data: summaryMsg.Data}:
+	case client.SendChannel() <- summaryMsg:
 		logx.Infof("[WsHandler] Sent offline summary to user %d: total=%d, push=%d", client.UserId, totalCount, len(pushList))
 	default:
 		logx.Errorf("[WsHandler] Failed to send offline summary to user %d (buffer full)", client.UserId)
@@ -237,7 +237,7 @@ func (h *WsHandler) pushOfflineMessages(client *conn.Client) {
 		}
 
 		select {
-		case client.SendChannel() <- &conn.BroadcastMessage{Type: "chat", Data: wsMsg.Data}:
+		case client.SendChannel() <- wsMsg:
 		default:
 			logx.Errorf("[WsHandler] Failed to push offline message %s to user %d (buffer full)", msg.MsgId, client.UserId)
 		}
@@ -337,7 +337,7 @@ func (h *WsHandler) pushOfflineGroupMessages(client *conn.Client) {
 	}
 
 	select {
-	case client.SendChannel() <- &conn.BroadcastMessage{Type: "offline_summary", Data: summaryMsg.Data}:
+	case client.SendChannel() <- summaryMsg:
 		logx.Infof("[WsHandler] Sent group offline summary to user %d: total=%d, push=%d", client.UserId, totalCount, len(pushList))
 	default:
 		logx.Errorf("[WsHandler] Failed to send group offline summary to user %d (buffer full)", client.UserId)
@@ -380,7 +380,7 @@ func (h *WsHandler) pushOfflineGroupMessages(client *conn.Client) {
 
 		// 发送消息
 		select {
-		case client.SendChannel() <- &conn.BroadcastMessage{Type: "group_chat", Data: wsMsg.Data}:
+		case client.SendChannel() <- wsMsg:
 			// 发送成功
 		default:
 			logx.Errorf("[WsHandler] Failed to push offline group message %s to user %d (buffer full)", msg.MsgId, client.UserId)

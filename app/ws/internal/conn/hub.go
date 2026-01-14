@@ -1,5 +1,18 @@
 package conn
 
+// Hub - WebSocket 连接管理和消息路由中心
+//
+// 职责：
+// 1. 连接管理：维护所有在线用户的连接映射，处理注册/注销
+// 2. 消息路由：将消息路由到指定的一个或多个客户端
+//    - 私聊路由：SendToUser() - 直接查表发送（同步，O(1)）
+//    - 群聊路由：SendToGroup() - 异步查询成员并批量发送（异步，避免阻塞）
+// 3. 状态通知：通知好友上线/下线状态，通知群组事件
+//
+// 设计说明：
+// - 私聊使用同步发送：因为只需要 O(1) 查表，无需异步
+// - 群聊使用异步发送：因为需要查询群成员（可能RPC调用），为避免阻塞使用 channel
+
 import (
 	"context"
 	"encoding/json"
@@ -26,12 +39,6 @@ type Hub struct {
 	// 注销请求通道
 	unregister chan *Client
 
-	// 广播消息通道
-	broadcast chan *BroadcastMessage
-
-	// 私聊消息通道
-	private chan *PrivateMessage
-
 	// 群组消息通道
 	groupMessage chan *GroupMessage
 
@@ -48,8 +55,6 @@ func NewHub(svcCtx *svc.ServiceContext) *Hub {
 		clients:      make(map[int64]*Client),
 		register:     make(chan *Client),
 		unregister:   make(chan *Client),
-		broadcast:    make(chan *BroadcastMessage),
-		private:      make(chan *PrivateMessage, 256),
 		groupMessage: make(chan *GroupMessage, 256),
 		svcCtx:       svcCtx,
 	}
@@ -92,61 +97,24 @@ func (h *Hub) Run() {
 			// 通知该用户的好友下线
 			h.notifyOnlineStatus(client.UserId, false)
 
-		case msg := <-h.broadcast:
-			var toClose []*Client
-			h.mu.Lock()
-			for userId, client := range h.clients {
-				select {
-				case client.send <- msg:
-				default:
-					// 发送失败，移除连接（避免慢消费者拖垮 Hub）
-					delete(h.clients, userId)
-					toClose = append(toClose, client)
-				}
-			}
-			h.mu.Unlock()
-			for _, c := range toClose {
-				c.Close()
-			}
-
-		case msg := <-h.private:
-			h.mu.RLock()
-			client, ok := h.clients[msg.ToUserId]
-			h.mu.RUnlock()
-			if ok {
-				data, _ := json.Marshal(msg.Message)
-				select {
-				case client.send <- &BroadcastMessage{Type: msg.Message.Type, Data: json.RawMessage(data)}:
-				default:
-					logx.Errorf("[Hub] Failed to send message to user %d", msg.ToUserId)
-				}
-			}
-
 		case msg := <-h.groupMessage:
-			h.handleGroupMessage(msg)
+			// ✅ 启动一个新的协程去处理，Hub 主循环瞬间释放，立马可以去处理下一个请求
+			// ✅ 即使 routeGroupMessage 卡住 10秒，也不影响别人登录/退出
+			go h.routeGroupMessage(msg)
 		}
 	}
 }
 
-// SendToUser 发送消息给指定用户
-func (h *Hub) SendToUser(userId int64, msg *Message) bool {
-	h.mu.RLock()
-	client, ok := h.clients[userId]
-	h.mu.RUnlock()
+// ==================== 连接管理 ====================
 
-	if !ok {
-		return false // 用户不在线
-	}
+// Register 注册客户端（用户上线）
+func (h *Hub) Register(client *Client) {
+	h.register <- client
+}
 
-	// 直接发送 Message 对象，WritePump 会负责序列化
-	select {
-	case client.send <- msg:
-		logx.Infof("[Hub] Sent message to user %d, type: %s", userId, msg.Type)
-		return true
-	default:
-		logx.Errorf("[Hub] Failed to send message to user %d: send buffer full", userId)
-		return false
-	}
+// Unregister 注销客户端（用户下线）
+func (h *Hub) Unregister(client *Client) {
+	h.unregister <- client
 }
 
 // IsOnline 检查用户是否在线
@@ -175,17 +143,31 @@ func (h *Hub) OnlineCount() int {
 	return len(h.clients)
 }
 
-// Register 注册客户端
-func (h *Hub) Register(client *Client) {
-	h.register <- client
+// ==================== 消息路由 ====================
+
+// SendToUser 路由私聊消息
+func (h *Hub) SendToUser(userId int64, msg *Message) bool {
+	h.mu.RLock()
+	client, ok := h.clients[userId]
+	h.mu.RUnlock()
+
+	if !ok {
+		return false // 用户不在线
+	}
+
+	// 直接发送 Message 对象，WritePump 会负责序列化
+	select {
+	case client.send <- msg:
+		logx.Infof("[Hub] Sent message to user %d, type: %s", userId, msg.Type)
+		return true
+	default:
+		logx.Errorf("[Hub] Failed to send message to user %d: send buffer full", userId)
+		return false
+	}
 }
 
-// Unregister 注销客户端
-func (h *Hub) Unregister(client *Client) {
-	h.unregister <- client
-}
-
-// SendToGroup 发送消息给群组成员
+// SendToGroup 路由群聊消息（异步，通过 channel 处理）
+// 为什么异步：需要查询群成员列表（可能涉及 RPC 调用），为避免阻塞使用 channel
 func (h *Hub) SendToGroup(groupId string, msg *Message, excludeUsers []int64) {
 	h.groupMessage <- &GroupMessage{
 		GroupId:      groupId,
@@ -194,7 +176,9 @@ func (h *Hub) SendToGroup(groupId string, msg *Message, excludeUsers []int64) {
 	}
 }
 
-// NotifyGroupEvent 通知群组事件
+// ==================== 状态通知 ====================
+
+// NotifyGroupEvent 通知群组事件（加入、退出、踢出等）
 func (h *Hub) NotifyGroupEvent(groupId string, eventType string, eventData interface{}) {
 	data, _ := json.Marshal(eventData)
 	msg := &Message{
@@ -263,8 +247,11 @@ func (h *Hub) notifyOnlineStatus(userId int64, online bool) {
 	}
 }
 
-// handleGroupMessage 处理群组消息
-func (h *Hub) handleGroupMessage(msg *GroupMessage) {
+// ==================== 内部实现 ====================
+
+// routeGroupMessage 路由群聊消息的内部实现
+// 职责：查询群成员（优先Redis，降级RPC）+ 批量推送给在线成员
+func (h *Hub) routeGroupMessage(msg *GroupMessage) {
 	var userIds []int64
 
 	// 1. 尝试从 Redis 获取群成员

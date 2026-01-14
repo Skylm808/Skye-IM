@@ -1,5 +1,19 @@
 package conn
 
+// client.go - WebSocket 客户端连接管理
+//
+// 职责：
+// 1. 连接维护：管理单个 WebSocket 连接的生命周期
+// 2. 消息读取：ReadPump 从 WebSocket 连接读取消息
+// 3. 消息写入：WritePump 向 WebSocket 连接写入消息
+// 4. 心跳管理：定期发送 Ping，处理 Pong
+// 5. 消息分发：将收到的消息路由到对应的处理函数
+//
+// 设计说明：
+// - 一个 Client 对应一个 WebSocket 连接
+// - ReadPump 和 WritePump 各自在独立的 goroutine 中运行
+// - send channel 用于异步发送消息给客户端
+
 import (
 	"encoding/json"
 	"sync"

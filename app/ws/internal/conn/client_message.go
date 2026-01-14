@@ -1,5 +1,20 @@
 package conn
 
+// client_message.go - Client 消息处理业务逻辑
+//
+// 职责：
+// 1. 消息解析：解析客户端发来的各类消息（私聊、群聊、ACK、已读）
+// 2. 业务验证：验证消息合法性、权限检查
+// 3. 数据存储：调用 RPC 将消息持久化到数据库
+// 4. ACK 确认：向发送者返回消息确认（sent/failed）
+// 5. 路由请求：调用 Hub 的路由方法分发消息
+//
+// 设计说明：
+// - 本文件专注于业务逻辑，不关心"如何路由"
+// - 路由的具体实现在 hub.go 中
+// - 私聊调用 Hub.SendToUser()（同步）
+// - 群聊调用 Hub.SendToGroup()（异步）
+
 import (
 	"context"
 	"encoding/json"

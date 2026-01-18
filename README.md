@@ -7,7 +7,7 @@
 ![License](https://img.shields.io/badge/License-MIT-yellow)
 ![Architecture](https://img.shields.io/badge/Architecture-Microservice-orange)
 
-一个基于 go-zero 框架构建的现代化、高性能即时通讯系统，采用微服务架构设计，支持私聊、群聊、好友管理等核心功能。
+一个基于 go-zero 框架构建的现代化即时通讯系统，采用微服务架构设计，支持私聊、群聊、好友管理等核心功能。
 
 [功能特性](#功能特性) • [技术栈](#技术栈) • [快速开始](#快速开始) • [架构设计](#架构设计) • [API 文档](#api-文档) • [开发指南](#开发指南)
 
@@ -30,7 +30,6 @@
 ### 👥 好友管理
 - ✅ 好友申请与处理
 - ✅ 好友列表查询（分页）
-- ✅ 好友备注设置
 - ✅ 好友删除
 - ✅ 黑名单管理
 

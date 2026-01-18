@@ -9,7 +9,7 @@
 
 一个基于 go-zero 框架构建的现代化即时通讯系统，采用微服务架构设计，支持私聊、群聊、好友管理等核心功能。
 
-[功能特性](#功能特性) • [技术栈](#技术栈) • [快速开始](#快速开始) • [架构设计](#架构设计) • [API 文档](#api-文档) • [开发指南](#开发指南)
+[功能特性](#-功能特性) • [技术栈](#-技术栈) • [快速开始](#-快速开始) • [架构设计](#-架构设计) • [API 文档](#-api-文档) • [开发指南](#-开发指南)
 
 </div>
 
@@ -123,8 +123,6 @@ go mod download
 
 ```bash
 # 启动 MySQL (端口 3306)
-# 创建数据库: im_auth (统一数据库，包含所有表)
-
 # 启动 Redis (端口 16379)
 redis-server --port 16379
 
@@ -135,24 +133,97 @@ etcd
 minio server /data --console-address ":9001"
 ```
 
-#### 3️⃣ 配置服务
+#### 3️⃣ 初始化数据库
+
+**方式一：使用统一初始化脚本（推荐）**
+
+项目根目录下提供了 `init_database.sql` 文件，包含所有数据表的创建语句。
+
+```bash
+# 登录 MySQL
+mysql -u root -p
+
+# 执行初始化脚本
+source /path/to/SkyeIM/init_database.sql
+
+# 或使用命令行直接导入
+mysql -u root -p < init_database.sql
+```
+
+执行完成后，会自动创建 `im_auth` 数据库及以下 8 张表：
+- ✅ `user` - 用户信息
+- ✅ `im_friend` - 好友关系  
+- ✅ `im_friend_request` - 好友申请
+- ✅ `im_message` - 消息记录
+- ✅ `im_group` - 群组信息
+- ✅ `im_group_member` - 群成员
+- ✅ `im_group_invitation` - 群邀请
+- ✅ `im_group_join_request` - 入群申请
+
+**方式二：手动执行各模块 SQL**
+
+如果需要分模块执行，可参考以下文件：
+- 用户模块: `app/auth/model/user.sql`
+- 好友模块: `app/friend/im_friend.sql`, `app/friend/im_friend_request.sql`
+- 群组模块: `app/group/im_group*.sql` (4个文件)
+- 消息模块: `app/message/im_message.sql`
+
+#### 4️⃣ 配置 QQ 邮箱 SMTP（发送验证码必需）
+
+系统使用 QQ 邮箱发送注册验证码，需要先开启 SMTP 服务并获取授权码。
+
+> [!TIP]
+> **详细图文教程**: [使用QQ邮箱发送邮件，QQ邮箱的smtp设置](https://cloud.tencent.com/developer/article/2177098)
+
+**步骤一：开启 QQ 邮箱 SMTP 服务**
+
+1. 登录 [QQ邮箱](https://mail.qq.com)
+2. 点击 **设置** → **账户**
+3. 找到 **POP3/SMTP服务** 或 **IMAP/SMTP服务**
+4. 点击 **开启**
+5. 按照提示发送短信验证
+6. 开启成功后，点击 **生成授权码**
+7. **复制并保存授权码**（这不是你的 QQ 密码！）
+
+**步骤二：配置服务**
+
+编辑 `app/auth/etc/auth-api.yaml`:
+
+```yaml
+Email:
+  Host: smtp.qq.com        # SMTP 服务器
+  Port: 465                # 端口号（必须是 465）
+  Username: your@qq.com    # 你的完整 QQ 邮箱地址
+  Password: your-auth-code # 刚才生成的授权码（不是QQ密码！）
+  From: "SkyeIM系统"       # 发件人显示名称
+```
+
+> [!IMPORTANT]
+> **常见错误**：
+> - ❌ 端口号错误：必须使用 `465`，不是 `25` 或 `587`
+> - ❌ 密码错误：必须使用**授权码**，不是 QQ 邮箱登录密码
+> - ❌ 用户名不完整：必须包含 `@qq.com`，如 `123456@qq.com`
+
+**测试邮件发送**
+
+启动 Auth 服务后，调用发送验证码接口测试：
+
+```bash
+curl -X POST http://localhost:8080/api/v1/auth/captcha/send \
+  -H "Content-Type: application/json" \
+  -d '{"email": "test@example.com"}'
+```
+
+#### 5️⃣ 配置服务
 
 修改各服务的配置文件 `etc/*.yaml`，配置数据库、Redis、etcd 连接信息。
 
 **关键配置项**：
-- **MySQL 连接字符串**: `root:630630@tcp(127.0.0.1:3306)/im_auth`
-- **Redis 地址**: `127.0.0.1:16379` (无密码)
-- **etcd 地址**: `127.0.0.1:2379`
-- **JWT Secret**: `Skylm-im-secret-key` (所有服务必须保持一致)
-- **数据库**: 统一使用 `im_auth` 数据库，包含以下表：
-  - `user` - 用户信息
-  - `im_friend` - 好友关系
-  - `im_friend_request` - 好友申请
-  - `im_message` - 消息记录
-  - `im_group` - 群组信息
-  - `im_group_member` - 群成员
-  - `im_group_invitation` - 群邀请
-  - `im_group_join_request` - 入群申请
+- 🔑 **JWT Secret**: `Skylm-im-secret-key` (所有服务必须一致)
+- 🗄️ **MySQL**: `root:630630@tcp(127.0.0.1:3306)/im_auth`
+- 📦 **Redis**: `127.0.0.1:16379` (无密码)
+- 📡 **etcd**: `127.0.0.1:2379`
+- 📧 **SMTP**: 见上方 QQ 邮箱配置
 
 ### 启动服务
 
@@ -290,10 +361,12 @@ WebSocket:
 
 > [!IMPORTANT]
 > **配置要点**：
-> - 🔑 JWT Secret: `Skylm-im-secret-key` (所有服务必须一致)
-> - 🗄️ Redis 端口: `16379`
-> - 🔐 MySQL: `root:630630@tcp(127.0.0.1:3306)/im_auth`
-> - 📡 etcd: `127.0.0.1:2379`
+> - 🔑 **JWT Secret**: `Skylm-im-secret-key` (所有服务必须一致)
+> - 🗄️ **Redis 端口**: `16379`
+> - 🔐 **MySQL**: `root:630630@tcp(127.0.0.1:3306)/im_auth`
+> - 📡 **etcd**: `127.0.0.1:2379`
+> - 📧 **SMTP**: 需配置 QQ 邮箱授权码（见上方环境准备第4步）
+> - 🗂️ **数据库**: 使用 `init_database.sql` 快速初始化
 
 ---
 

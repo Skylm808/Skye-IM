@@ -1,0 +1,214 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        // ========== RPC 服务 ==========
+        {
+            "label": "Run User RPC",
+            "type": "shell",
+            "command": "go run user.go",
+            "options": {
+                "cwd": "${workspaceFolder}/app/user/rpc"
+            },
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            },
+            "isBackground": true,
+            "problemMatcher": []
+        },
+        {
+            "label": "Run Friend RPC",
+            "type": "shell",
+            "command": "go run friend.go",
+            "options": {
+                "cwd": "${workspaceFolder}/app/friend/rpc"
+            },
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            },
+            "isBackground": true,
+            "problemMatcher": []
+        },
+        {
+            "label": "Run Message RPC",
+            "type": "shell",
+            "command": "go run message.go",
+            "options": {
+                "cwd": "${workspaceFolder}/app/message/rpc"
+            },
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            },
+            "isBackground": true,
+            "problemMatcher": []
+        },
+        {
+            "label": "Run Group RPC",
+            "type": "shell",
+            "command": "go run group.go",
+            "options": {
+                "cwd": "${workspaceFolder}/app/group/rpc"
+            },
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            },
+            "isBackground": true,
+            "problemMatcher": []
+        },
+        // ========== API 服务（修正文件名）==========
+        {
+            "label": "Run Auth API",
+            "type": "shell",
+            "command": "go run auth.go",
+            "options": {
+                "cwd": "${workspaceFolder}/app/auth"
+            },
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            },
+            "isBackground": true,
+            "problemMatcher": []
+        },
+        {
+            "label": "Run User API",
+            "type": "shell",
+            "command": "go run user.go", // ← 改这里：user-api.go → user.go
+            "options": {
+                "cwd": "${workspaceFolder}/app/user/api"
+            },
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            },
+            "isBackground": true,
+            "problemMatcher": []
+        },
+        {
+            "label": "Run Friend API",
+            "type": "shell",
+            "command": "go run friend.go", // ← 改这里：friend-api.go → friend.go
+            "options": {
+                "cwd": "${workspaceFolder}/app/friend/api"
+            },
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            },
+            "isBackground": true,
+            "problemMatcher": []
+        },
+        {
+            "label": "Run Message API",
+            "type": "shell",
+            "command": "go run message.go", // ← 改这里：message-api.go → message.go
+            "options": {
+                "cwd": "${workspaceFolder}/app/message/api"
+            },
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            },
+            "isBackground": true,
+            "problemMatcher": []
+        },
+        {
+            "label": "Run Group API",
+            "type": "shell",
+            "command": "go run group.go",
+            "options": {
+                "cwd": "${workspaceFolder}/app/group/api"
+            },
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            },
+            "isBackground": true,
+            "problemMatcher": []
+        },
+        {
+            "label": "Run Upload API",
+            "type": "shell",
+            "command": "go run upload.go",
+            "options": {
+                "cwd": "${workspaceFolder}/app/upload/api"
+            },
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            },
+            "isBackground": true,
+            "problemMatcher": []
+        },
+        // ========== Gateway 网关 ==========
+        {
+            "label": "Run Gateway",
+            "type": "shell",
+            "command": "go run gateway.go",
+            "options": {
+                "cwd": "${workspaceFolder}/app/gateway"
+            },
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            },
+            "isBackground": true,
+            "problemMatcher": []
+        },
+        // ========== WebSocket 服务 ==========
+        {
+            "label": "Run WebSocket",
+            "type": "shell",
+            "command": "go run ws.go",
+            "options": {
+                "cwd": "${workspaceFolder}/app/ws"
+            },
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            },
+            "isBackground": true,
+            "problemMatcher": []
+        },
+        // ========== 组合任务 ==========
+        {
+            "label": "Start All RPC Services",
+            "dependsOn": [
+                "Run User RPC",
+                "Run Friend RPC",
+                "Run Message RPC",
+                "Run Group RPC"
+            ],
+            "problemMatcher": []
+        },
+        {
+            "label": "Start All API Services",
+            "dependsOn": [
+                "Run Auth API",
+                "Run User API",
+                "Run Friend API",
+                "Run Message API",
+                "Run Group API",
+                "Run Upload API"
+            ],
+            "problemMatcher": []
+        },
+        {
+            "label": "🚀 Start All Services",
+            "dependsOn": [
+                "Start All RPC Services",
+                "Start All API Services",
+                "Run Gateway",
+                "Run WebSocket"
+            ],
+            "problemMatcher": [],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        }
+    ]
+}

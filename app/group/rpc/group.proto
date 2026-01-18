@@ -76,6 +76,9 @@ service Group {
 
     // 获取用户发出的入群申请
     rpc GetSentJoinRequests(GetSentJoinRequestsReq) returns (GetSentJoinRequestsResp);
+
+    // 获取所有管理群组的入群申请（通知中心）
+    rpc GetAllManagedGroupJoinRequests(GetAllManagedGroupJoinRequestsReq) returns (GetAllManagedGroupJoinRequestsResp);
 }
 
 // ... 保持原有结构 ...
@@ -410,3 +413,16 @@ message GetSentJoinRequestsResp {
     repeated JoinRequestInfo list = 1;
     int64 total = 2;
 }
+
+// 获取所有管理群组的入群申请（通知中心）
+message GetAllManagedGroupJoinRequestsReq {
+    int64 operator_id = 1;             // 操作者ID（从JWT获取）
+    int64 page = 2;                    // 页码
+    int64 page_size = 3;               // 每页数量
+}
+
+message GetAllManagedGroupJoinRequestsResp {
+    repeated JoinRequestInfo list = 1;
+    int64 total = 2;
+}
+

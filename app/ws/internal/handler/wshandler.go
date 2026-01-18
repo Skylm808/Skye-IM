@@ -1,5 +1,21 @@
 package handler
 
+// wshandler.go - WebSocket 连接接入层 (前台接待)
+//
+// 角色：门卫 / 酒店前台
+// 职责：
+// 1. 协议升级：处理 HTTP -> WebSocket 的协议升级请求 (Upgrade)
+// 2. 身份鉴权：解析 URL 中的 Token，验证用户身份（无效则拒绝连接）
+// 3. 连接初始化：
+//    - 创建 Client 实例
+//    - 注册到 Hub 中
+//    - 启动 Client 的读写协程 (ReadPump/WritePump)
+// 4. 离线推送：连接建立成功后，主动拉取并推送离线消息（私聊+群聊）
+//
+// 关系说明：
+// - 它是用户连接的唯一入口。
+// - 它负责生产 `conn.Client` 对象并交给 `conn.Hub` 管理。
+
 import (
 	"context"
 	"encoding/json"
@@ -203,7 +219,7 @@ func (h *WsHandler) pushOfflineMessages(client *conn.Client) {
 
 	// 4. 发送离线消息摘要
 	summaryMsg := &conn.Message{
-		Type: "offline_summary",
+		Type: "offline_messages",
 		Data: mustMarshal(map[string]interface{}{
 			"totalCount":  totalCount,
 			"pushCount":   len(pushList),
@@ -215,9 +231,9 @@ func (h *WsHandler) pushOfflineMessages(client *conn.Client) {
 
 	select {
 	case client.SendChannel() <- summaryMsg:
-		logx.Infof("[WsHandler] Sent offline summary to user %d: total=%d, push=%d", client.UserId, totalCount, len(pushList))
+		logx.Infof("[WsHandler] Sent offline messages summary to user %d: total=%d, push=%d", client.UserId, totalCount, len(pushList))
 	default:
-		logx.Errorf("[WsHandler] Failed to send offline summary to user %d (buffer full)", client.UserId)
+		logx.Errorf("[WsHandler] Failed to send offline messages summary to user %d (buffer full)", client.UserId)
 	}
 
 	// 5. 推送消息
@@ -289,11 +305,15 @@ func (h *WsHandler) pushOfflineGroupMessages(client *conn.Client) {
 		}
 
 		if len(msgResp.List) > 0 {
-			// 过滤掉自己发送的消息（可选，如果自己多端登录可能需要同步给自己）
-			// 这里假设同步逻辑: 自己发的消息，其他端虽然已读Seq没更，但通常不需要作为"离线消息"强推，除非为了多端同步。
-			// 简单起见，推送所有 > ReadSeq 的消息。
+			// memberInfo.JoinedAt 是用户加入群聊的时间戳
+			joinedTimestamp := memberInfo.JoinedAt
+
 			for _, msg := range msgResp.List {
-				if msg.FromUserId != client.UserId {
+				// 只推送加群后的消息，并且不是自己发送的
+				// 过滤条件：
+				// 1. 不是自己发送的消息
+				// 2. 消息时间晚于或等于加群时间
+				if msg.FromUserId != client.UserId && msg.CreatedAt >= joinedTimestamp {
 					allGroupMessages = append(allGroupMessages, msg)
 				}
 			}
@@ -326,7 +346,7 @@ func (h *WsHandler) pushOfflineGroupMessages(client *conn.Client) {
 
 	// 4. 发送群聊离线消息摘要
 	summaryMsg := &conn.Message{
-		Type: "offline_summary",
+		Type: "offline_messages",
 		Data: mustMarshal(map[string]interface{}{
 			"totalCount":  totalCount,
 			"pushCount":   len(pushList),
@@ -338,9 +358,9 @@ func (h *WsHandler) pushOfflineGroupMessages(client *conn.Client) {
 
 	select {
 	case client.SendChannel() <- summaryMsg:
-		logx.Infof("[WsHandler] Sent group offline summary to user %d: total=%d, push=%d", client.UserId, totalCount, len(pushList))
+		logx.Infof("[WsHandler] Sent group offline messages summary to user %d: total=%d, push=%d", client.UserId, totalCount, len(pushList))
 	default:
-		logx.Errorf("[WsHandler] Failed to send group offline summary to user %d (buffer full)", client.UserId)
+		logx.Errorf("[WsHandler] Failed to send group offline messages summary to user %d (buffer full)", client.UserId)
 	}
 
 	// 5. 推送群聊消息给客户端

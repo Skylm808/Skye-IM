@@ -14,56 +14,58 @@ import (
 )
 
 type (
-	CheckMembershipReq         = group.CheckMembershipReq
-	CheckMembershipResp        = group.CheckMembershipResp
-	CreateGroupReq             = group.CreateGroupReq
-	CreateGroupResp            = group.CreateGroupResp
-	DismissGroupReq            = group.DismissGroupReq
-	DismissGroupResp           = group.DismissGroupResp
-	GetGroupInfoReq            = group.GetGroupInfoReq
-	GetGroupInfoResp           = group.GetGroupInfoResp
-	GetGroupJoinRequestsReq    = group.GetGroupJoinRequestsReq
-	GetGroupJoinRequestsResp   = group.GetGroupJoinRequestsResp
-	GetJoinedGroupsReq         = group.GetJoinedGroupsReq
-	GetJoinedGroupsResp        = group.GetJoinedGroupsResp
-	GetMemberListReq           = group.GetMemberListReq
-	GetMemberListResp          = group.GetMemberListResp
-	GetReceivedInvitationsReq  = group.GetReceivedInvitationsReq
-	GetReceivedInvitationsResp = group.GetReceivedInvitationsResp
-	GetSentInvitationsReq      = group.GetSentInvitationsReq
-	GetSentInvitationsResp     = group.GetSentInvitationsResp
-	GetSentJoinRequestsReq     = group.GetSentJoinRequestsReq
-	GetSentJoinRequestsResp    = group.GetSentJoinRequestsResp
-	GetUserGroupListReq        = group.GetUserGroupListReq
-	GetUserGroupListResp       = group.GetUserGroupListResp
-	GroupInfo                  = group.GroupInfo
-	GroupInvitationInfo        = group.GroupInvitationInfo
-	HandleGroupInvitationReq   = group.HandleGroupInvitationReq
-	HandleGroupInvitationResp  = group.HandleGroupInvitationResp
-	HandleJoinRequestReq       = group.HandleJoinRequestReq
-	HandleJoinRequestResp      = group.HandleJoinRequestResp
-	InviteMembersReq           = group.InviteMembersReq
-	InviteMembersResp          = group.InviteMembersResp
-	JoinRequestInfo            = group.JoinRequestInfo
-	KickMemberReq              = group.KickMemberReq
-	KickMemberResp             = group.KickMemberResp
-	MemberInfo                 = group.MemberInfo
-	QuitGroupReq               = group.QuitGroupReq
-	QuitGroupResp              = group.QuitGroupResp
-	SearchGroupReq             = group.SearchGroupReq
-	SearchGroupResp            = group.SearchGroupResp
-	SendGroupInvitationReq     = group.SendGroupInvitationReq
-	SendGroupInvitationResp    = group.SendGroupInvitationResp
-	SendJoinRequestReq         = group.SendJoinRequestReq
-	SendJoinRequestResp        = group.SendJoinRequestResp
-	SetMemberMuteReq           = group.SetMemberMuteReq
-	SetMemberMuteResp          = group.SetMemberMuteResp
-	SetMemberRoleReq           = group.SetMemberRoleReq
-	SetMemberRoleResp          = group.SetMemberRoleResp
-	UpdateGroupReadSeqReq      = group.UpdateGroupReadSeqReq
-	UpdateGroupReadSeqResp     = group.UpdateGroupReadSeqResp
-	UpdateGroupReq             = group.UpdateGroupReq
-	UpdateGroupResp            = group.UpdateGroupResp
+	CheckMembershipReq                 = group.CheckMembershipReq
+	CheckMembershipResp                = group.CheckMembershipResp
+	CreateGroupReq                     = group.CreateGroupReq
+	CreateGroupResp                    = group.CreateGroupResp
+	DismissGroupReq                    = group.DismissGroupReq
+	DismissGroupResp                   = group.DismissGroupResp
+	GetAllManagedGroupJoinRequestsReq  = group.GetAllManagedGroupJoinRequestsReq
+	GetAllManagedGroupJoinRequestsResp = group.GetAllManagedGroupJoinRequestsResp
+	GetGroupInfoReq                    = group.GetGroupInfoReq
+	GetGroupInfoResp                   = group.GetGroupInfoResp
+	GetGroupJoinRequestsReq            = group.GetGroupJoinRequestsReq
+	GetGroupJoinRequestsResp           = group.GetGroupJoinRequestsResp
+	GetJoinedGroupsReq                 = group.GetJoinedGroupsReq
+	GetJoinedGroupsResp                = group.GetJoinedGroupsResp
+	GetMemberListReq                   = group.GetMemberListReq
+	GetMemberListResp                  = group.GetMemberListResp
+	GetReceivedInvitationsReq          = group.GetReceivedInvitationsReq
+	GetReceivedInvitationsResp         = group.GetReceivedInvitationsResp
+	GetSentInvitationsReq              = group.GetSentInvitationsReq
+	GetSentInvitationsResp             = group.GetSentInvitationsResp
+	GetSentJoinRequestsReq             = group.GetSentJoinRequestsReq
+	GetSentJoinRequestsResp            = group.GetSentJoinRequestsResp
+	GetUserGroupListReq                = group.GetUserGroupListReq
+	GetUserGroupListResp               = group.GetUserGroupListResp
+	GroupInfo                          = group.GroupInfo
+	GroupInvitationInfo                = group.GroupInvitationInfo
+	HandleGroupInvitationReq           = group.HandleGroupInvitationReq
+	HandleGroupInvitationResp          = group.HandleGroupInvitationResp
+	HandleJoinRequestReq               = group.HandleJoinRequestReq
+	HandleJoinRequestResp              = group.HandleJoinRequestResp
+	InviteMembersReq                   = group.InviteMembersReq
+	InviteMembersResp                  = group.InviteMembersResp
+	JoinRequestInfo                    = group.JoinRequestInfo
+	KickMemberReq                      = group.KickMemberReq
+	KickMemberResp                     = group.KickMemberResp
+	MemberInfo                         = group.MemberInfo
+	QuitGroupReq                       = group.QuitGroupReq
+	QuitGroupResp                      = group.QuitGroupResp
+	SearchGroupReq                     = group.SearchGroupReq
+	SearchGroupResp                    = group.SearchGroupResp
+	SendGroupInvitationReq             = group.SendGroupInvitationReq
+	SendGroupInvitationResp            = group.SendGroupInvitationResp
+	SendJoinRequestReq                 = group.SendJoinRequestReq
+	SendJoinRequestResp                = group.SendJoinRequestResp
+	SetMemberMuteReq                   = group.SetMemberMuteReq
+	SetMemberMuteResp                  = group.SetMemberMuteResp
+	SetMemberRoleReq                   = group.SetMemberRoleReq
+	SetMemberRoleResp                  = group.SetMemberRoleResp
+	UpdateGroupReadSeqReq              = group.UpdateGroupReadSeqReq
+	UpdateGroupReadSeqResp             = group.UpdateGroupReadSeqResp
+	UpdateGroupReq                     = group.UpdateGroupReq
+	UpdateGroupResp                    = group.UpdateGroupResp
 
 	Group interface {
 		// 创建群组
@@ -112,6 +114,8 @@ type (
 		GetGroupJoinRequests(ctx context.Context, in *GetGroupJoinRequestsReq, opts ...grpc.CallOption) (*GetGroupJoinRequestsResp, error)
 		// 获取用户发出的入群申请
 		GetSentJoinRequests(ctx context.Context, in *GetSentJoinRequestsReq, opts ...grpc.CallOption) (*GetSentJoinRequestsResp, error)
+		// 获取所有管理群组的入群申请（通知中心）
+		GetAllManagedGroupJoinRequests(ctx context.Context, in *GetAllManagedGroupJoinRequestsReq, opts ...grpc.CallOption) (*GetAllManagedGroupJoinRequestsResp, error)
 	}
 
 	defaultGroup struct {
@@ -261,4 +265,10 @@ func (m *defaultGroup) GetGroupJoinRequests(ctx context.Context, in *GetGroupJoi
 func (m *defaultGroup) GetSentJoinRequests(ctx context.Context, in *GetSentJoinRequestsReq, opts ...grpc.CallOption) (*GetSentJoinRequestsResp, error) {
 	client := group.NewGroupClient(m.cli.Conn())
 	return client.GetSentJoinRequests(ctx, in, opts...)
+}
+
+// 获取所有管理群组的入群申请（通知中心）
+func (m *defaultGroup) GetAllManagedGroupJoinRequests(ctx context.Context, in *GetAllManagedGroupJoinRequestsReq, opts ...grpc.CallOption) (*GetAllManagedGroupJoinRequestsResp, error) {
+	client := group.NewGroupClient(m.cli.Conn())
+	return client.GetAllManagedGroupJoinRequests(ctx, in, opts...)
 }

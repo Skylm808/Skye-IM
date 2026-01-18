@@ -22,6 +22,7 @@ type (
 		CountByUserId(ctx context.Context, userId int64) (int64, error)
 		DeleteByGroupIdUserId(ctx context.Context, groupId string, userId int64) error
 		UpdateReadSeq(ctx context.Context, groupId string, userId int64, readSeq uint64) error
+		FindManagedGroupsByUserId(ctx context.Context, userId int64) ([]string, error)
 	}
 
 	customImGroupMemberModel struct {
@@ -113,4 +114,17 @@ func (m *customImGroupMemberModel) UpdateReadSeq(ctx context.Context, groupId st
 		return conn.ExecCtx(ctx, query, readSeq, groupId, userId)
 	}, imGroupMemberGroupIdUserIdKey, imGroupMemberIdKey)
 	return err
+}
+
+// FindManagedGroupsByUserId 查询用户作为管理员/群主的所有群组ID
+func (m *customImGroupMemberModel) FindManagedGroupsByUserId(ctx context.Context, userId int64) ([]string, error) {
+	var groupIds []string
+	query := fmt.Sprintf("select `group_id` from %s where `user_id` = ? and `role` in (1, 2)", m.table)
+	err := m.QueryRowsNoCacheCtx(ctx, &groupIds, query, userId)
+	switch err {
+	case nil:
+		return groupIds, nil
+	default:
+		return nil, err
+	}
 }

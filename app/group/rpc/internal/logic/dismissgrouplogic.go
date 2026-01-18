@@ -52,8 +52,13 @@ func (l *DismissGroupLogic) DismissGroup(in *group.DismissGroupReq) (*group.Dism
 
 	// 4. 清除 Redis 缓存
 	go func() {
-		redisKey := fmt.Sprintf("im:group:members:%s", in.GroupId)
-		_, _ = l.svcCtx.Redis.Del(redisKey)
+		// 1. 删除群成员缓存
+		memberKey := fmt.Sprintf("im:group:members:%s", in.GroupId)
+		// 2. 删除群消息 Seq 计数器
+		seqKey := fmt.Sprintf("group:seq:%s", in.GroupId)
+
+		_, _ = l.svcCtx.Redis.Del(memberKey)
+		_, _ = l.svcCtx.Redis.Del(seqKey)
 	}()
 
 	// 5. 推送通知

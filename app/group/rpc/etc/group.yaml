@@ -13,7 +13,10 @@ Cache:
     Pass: ""
 
 # WebSocket 服务地址
-WsServiceUrl: "127.0.0.1:10300"
+WsServiceUrl: "http://127.0.0.1:10300"
+
+# WebSocket 内部推送鉴权
+WsPushSecret: "skyim-push-secret666"
 
 # 日志配置
 Log:

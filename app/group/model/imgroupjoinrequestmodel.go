@@ -3,6 +3,7 @@ package model
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/zeromicro/go-zero/core/stores/cache"
 	"github.com/zeromicro/go-zero/core/stores/sqlx"
@@ -27,6 +28,8 @@ type (
 		CountByGroupIdAndStatus(ctx context.Context, groupId string, status int64) (int64, error)
 		// 统计用户的申请数量
 		CountByUserId(ctx context.Context, userId uint64) (int64, error)
+		// 按多个群组ID和状态查询申请列表(分页)
+		FindByGroupIdsAndStatus(ctx context.Context, groupIds []string, status int64, page, pageSize int64) ([]*ImGroupJoinRequest, int64, error)
 	}
 
 	customImGroupJoinRequestModel struct {
@@ -106,4 +109,42 @@ func (m *customImGroupJoinRequestModel) FindLatestByGroupAndUser(ctx context.Con
 	default:
 		return nil, err
 	}
+}
+
+// FindByGroupIdsAndStatus 按多个群组ID和状态查询申请列表(分页)
+func (m *customImGroupJoinRequestModel) FindByGroupIdsAndStatus(ctx context.Context, groupIds []string, status int64, page, pageSize int64) ([]*ImGroupJoinRequest, int64, error) {
+	// 如果群组列表为空，直接返回
+	if len(groupIds) == 0 {
+		return []*ImGroupJoinRequest{}, 0, nil
+	}
+
+	// 构建IN子句的占位符
+	placeholders := make([]string, len(groupIds))
+	args := make([]interface{}, 0, len(groupIds)+3)
+	for i := range groupIds {
+		placeholders[i] = "?"
+		args = append(args, groupIds[i])
+	}
+	inClause := fmt.Sprintf("(%s)", strings.Join(placeholders, ","))
+
+	// 先查询总数
+	var total int64
+	countQuery := fmt.Sprintf("select count(*) from %s where `group_id` in %s and `status` = ?", m.table, inClause)
+	countArgs := append(args, status)
+	err := m.QueryRowNoCacheCtx(ctx, &total, countQuery, countArgs...)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	// 查询分页数据
+	var resp []*ImGroupJoinRequest
+	offset := (page - 1) * pageSize
+	dataQuery := fmt.Sprintf("select %s from %s where `group_id` in %s and `status` = ? order by `created_at` desc limit ? offset ?", imGroupJoinRequestRows, m.table, inClause)
+	dataArgs := append(args, status, pageSize, offset)
+	err = m.QueryRowsNoCacheCtx(ctx, &resp, dataQuery, dataArgs...)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	return resp, total, nil
 }

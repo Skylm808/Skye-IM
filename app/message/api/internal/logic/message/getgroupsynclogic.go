@@ -66,6 +66,7 @@ func (l *GetGroupSyncLogic) GetGroupSync(req *types.GetGroupSyncReq) (resp *type
 			Status:      msg.Status,
 			CreatedAt:   msg.CreatedAt,
 			Seq:         msg.Seq,
+			AtUserIds:   msg.AtUserIds,
 		})
 		if int32(len(list)) >= limit {
 			break

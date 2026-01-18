@@ -3,6 +3,7 @@ package logic
 import (
 	"context"
 
+	"SkyeIM/app/message/model"
 	"SkyeIM/app/message/rpc/internal/svc"
 	"SkyeIM/app/message/rpc/message"
 
@@ -25,12 +26,17 @@ func NewGetUnreadMessagesLogic(ctx context.Context, svcCtx *svc.ServiceContext) 
 
 // 获取与某用户的未读消息
 func (l *GetUnreadMessagesLogic) GetUnreadMessages(in *message.GetUnreadMessagesReq) (*message.GetUnreadMessagesResp, error) {
-	// 调用Model层方法
-	messages, err := l.svcCtx.ImMessageModel.FindUnreadMessages(
-		l.ctx,
-		in.UserId,
-		in.PeerId,
-	)
+	var messages []*model.ImMessage
+	var err error
+
+	// 如果 PeerId 为 0，表示获取该用户对应的 *所有* 发送者的未读消息（批量）
+	if in.PeerId == 0 {
+		messages, err = l.svcCtx.ImMessageModel.FindAllUnreadMessages(l.ctx, in.UserId)
+	} else {
+		// 否则获取指定用户的未读消息
+		messages, err = l.svcCtx.ImMessageModel.FindUnreadMessages(l.ctx, in.UserId, in.PeerId)
+	}
+
 	if err != nil {
 		l.Logger.Errorf("查询未读消息失败: %v", err)
 		return nil, err

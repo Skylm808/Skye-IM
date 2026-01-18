@@ -105,6 +105,12 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 				Handler: joinrequest.HandleJoinRequestHandler(serverCtx),
 			},
 			{
+				// 获取所有管理群组的入群申请
+				Method:  http.MethodGet,
+				Path:    "/join/received",
+				Handler: joinrequest.GetReceivedJoinRequestsHandler(serverCtx),
+			},
+			{
 				// 发送入群申请
 				Method:  http.MethodPost,
 				Path:    "/join/request",

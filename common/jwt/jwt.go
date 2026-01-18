@@ -50,9 +50,10 @@ func GenerateToken(userId int64, username string, secret string, expireSeconds i
 
 // ParseToken 解析JWT Token
 func ParseToken(tokenString string, secret string) (*CustomClaims, error) {
-	token, err := jwt.ParseWithClaims(tokenString, &CustomClaims{}, func(token *jwt.Token) (interface{}, error) {
-		return []byte(secret), nil
-	})
+	token, err := jwt.ParseWithClaims(tokenString, &CustomClaims{},
+		func(token *jwt.Token) (interface{}, error) {
+			return []byte(secret), nil
+		})
 
 	if err != nil {
 		if errors.Is(err, jwt.ErrTokenExpired) {
@@ -93,4 +94,3 @@ func GenerateTokenPair(userId int64, username string, accessSecret string, acces
 func ValidateTokenType(claims *CustomClaims, expectedType TokenType) bool {
 	return claims.TokenType == expectedType
 }
-

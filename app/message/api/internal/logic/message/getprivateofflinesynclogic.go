@@ -5,8 +5,8 @@ package message
 
 import (
 	"context"
+	"sort"
 
-	"SkyeIM/app/friend/rpc/friend"
 	"SkyeIM/app/message/api/internal/svc"
 	"SkyeIM/app/message/api/internal/types"
 	"SkyeIM/app/message/rpc/message"
@@ -31,40 +31,25 @@ func NewGetPrivateOfflineSyncLogic(ctx context.Context, svcCtx *svc.ServiceConte
 
 func (l *GetPrivateOfflineSyncLogic) GetPrivateOfflineSync(req *types.GetPrivateOfflineSyncReq) (resp *types.GetPrivateOfflineSyncResp, err error) {
 	// 从JWT中获取当前用户ID
-	userId := l.ctx.Value("userId").(int64)
-
-	// 1. 获取用户的好友列表
-	friendResp, err := l.svcCtx.FriendRpc.GetFriendList(l.ctx, &friend.GetFriendListReq{
-		UserId:   userId,
-		Page:     1,
-		PageSize: 10000, // 获取所有好友
-	})
+	userId, err := getUserIdFromCtx(l.ctx)
 	if err != nil {
-		logx.Errorf("[GetPrivateOfflineSync] Failed to get friend list: %v", err)
 		return nil, err
 	}
 
-	// 2. 收集所有好友的未读消息
+	// 1. 直接获取所有离线消息（优化：通过 RPC 批量拉取）
+	// PeerId=0 表示获取用户的 *所有* 未读消息
+	unreadResp, err := l.svcCtx.MessageRpc.GetUnreadMessages(l.ctx, &message.GetUnreadMessagesReq{
+		UserId: userId,
+		PeerId: 0,
+	})
+	if err != nil {
+		logx.Errorf("[GetPrivateOfflineSync] Failed to get unread messages: %v", err)
+		return nil, err
+	}
+
 	var allMessages []*message.MessageInfo
-	for _, friendInfo := range friendResp.List {
-		// 跳过被拉黑的好友
-		if friendInfo.Status == 2 {
-			continue
-		}
-
-		// 获取与该好友的未读消息
-		unreadResp, err := l.svcCtx.MessageRpc.GetUnreadMessages(l.ctx, &message.GetUnreadMessagesReq{
-			UserId: userId,
-			PeerId: friendInfo.FriendId,
-		})
-		if err != nil {
-			logx.Errorf("[GetPrivateOfflineSync] Failed to get unread from user %d: %v", friendInfo.FriendId, err)
-			continue
-		}
-
-		if len(unreadResp.List) > 0 {
-			allMessages = append(allMessages, unreadResp.List...)
-		}
+	if len(unreadResp.List) > 0 {
+		allMessages = unreadResp.List
 	}
 
 	// 3. 按时间排序（从旧到新）
@@ -119,6 +104,7 @@ func (l *GetPrivateOfflineSyncLogic) GetPrivateOfflineSync(req *types.GetPrivate
 			Status:      msg.Status,
 			CreatedAt:   msg.CreatedAt,
 			Seq:         msg.Seq,
+			AtUserIds:   msg.AtUserIds,
 		})
 	}
 
@@ -130,13 +116,9 @@ func (l *GetPrivateOfflineSyncLogic) GetPrivateOfflineSync(req *types.GetPrivate
 }
 
 // sortMessagesByTime 按创建时间排序（从旧到新）
+// sortMessagesByTime 按创建时间排序（从旧到新）
 func sortMessagesByTime(messages []*message.MessageInfo) {
-	// 简单的冒泡排序，生产环境可用sort.Slice
-	for i := 0; i < len(messages)-1; i++ {
-		for j := 0; j < len(messages)-i-1; j++ {
-			if messages[j].CreatedAt > messages[j+1].CreatedAt {
-				messages[j], messages[j+1] = messages[j+1], messages[j]
-			}
-		}
-	}
+	sort.Slice(messages, func(i, j int) bool {
+		return messages[i].CreatedAt < messages[j].CreatedAt
+	})
 }

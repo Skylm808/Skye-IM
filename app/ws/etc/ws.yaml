@@ -43,7 +43,7 @@ Redis:
 
 # 内部推送接口鉴权（可选；设置后 group-rpc 调用需携带相同 Secret）
 PushEvent:
-  Secret: ""
+  Secret: "skyim-push-secret666"
 
 # 日志配置
 Log:

@@ -24,7 +24,6 @@ type UserInfo {
 }
 
 // 获取用户资料响应
-// 获取用户资料响应
 type ProfileResponse {
 	User UserInfo `json:"user"`
 }

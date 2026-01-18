@@ -95,6 +95,11 @@ func (l *HandleJoinRequestLogic) HandleJoinRequest(in *group.HandleJoinRequestRe
 				l.Logger.Errorf("更新群组成员数失败: %v", err)
 				// 不中断流程，继续处理申请
 			}
+
+			// 推送入群通知
+			_ = l.svcCtx.WsPushClient.PushGroupEvent(request.GroupId, "joinGroup", map[string]interface{}{
+				"userId": request.UserId,
+			})
 		}
 	}
 

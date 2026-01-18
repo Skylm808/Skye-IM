@@ -160,3 +160,9 @@ func (s *GroupServer) GetSentJoinRequests(ctx context.Context, in *group.GetSent
 	l := logic.NewGetSentJoinRequestsLogic(ctx, s.svcCtx)
 	return l.GetSentJoinRequests(in)
 }
+
+// 获取所有管理群组的入群申请（通知中心）
+func (s *GroupServer) GetAllManagedGroupJoinRequests(ctx context.Context, in *group.GetAllManagedGroupJoinRequestsReq) (*group.GetAllManagedGroupJoinRequestsResp, error) {
+	l := logic.NewGetAllManagedGroupJoinRequestsLogic(ctx, s.svcCtx)
+	return l.GetAllManagedGroupJoinRequests(in)
+}

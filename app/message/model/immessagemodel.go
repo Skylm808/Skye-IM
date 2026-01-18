@@ -21,6 +21,8 @@ type (
 		// 私聊消息查询方法
 		FindPrivateMessageList(ctx context.Context, userId, peerId, lastMsgId, limit int64) ([]*ImMessage, error)
 		FindUnreadMessages(ctx context.Context, userId, peerId int64) ([]*ImMessage, error)
+		// 批量查询所有未读私聊消息
+		FindAllUnreadMessages(ctx context.Context, userId int64) ([]*ImMessage, error)
 		CountUnreadMessages(ctx context.Context, userId, peerId int64) (int64, error)
 		MarkMessagesAsRead(ctx context.Context, userId, peerId int64, msgIds []string) (int64, error)
 		FindGroupMessagesAfterSeq(ctx context.Context, groupId string, seq uint64) ([]*ImMessage, error)
@@ -100,6 +102,20 @@ func (m *customImMessageModel) FindUnreadMessages(ctx context.Context, userId, p
 	query := fmt.Sprintf("select %s from %s where `chat_type` = 1 and `to_user_id` = ? and `from_user_id` = ? and `status` = 0 order by `id` asc", imMessageRows, m.table)
 
 	err := m.QueryRowsNoCacheCtx(ctx, &resp, query, userId, peerId)
+	switch err {
+	case nil:
+		return resp, nil
+	default:
+		return nil, err
+	}
+}
+
+// FindAllUnreadMessages 批量获取用户所有未读私聊消息（优化性能）
+func (m *customImMessageModel) FindAllUnreadMessages(ctx context.Context, userId int64) ([]*ImMessage, error) {
+	var resp []*ImMessage
+	query := fmt.Sprintf("select %s from %s where `chat_type` = 1 and `to_user_id` = ? and `status` = 0 order by `created_at` asc", imMessageRows, m.table)
+
+	err := m.QueryRowsNoCacheCtx(ctx, &resp, query, userId)
 	switch err {
 	case nil:
 		return resp, nil

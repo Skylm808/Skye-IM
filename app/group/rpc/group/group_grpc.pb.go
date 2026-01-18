@@ -70,6 +70,8 @@ type GroupClient interface {
 	GetGroupJoinRequests(ctx context.Context, in *GetGroupJoinRequestsReq, opts ...grpc.CallOption) (*GetGroupJoinRequestsResp, error)
 	// 获取用户发出的入群申请
 	GetSentJoinRequests(ctx context.Context, in *GetSentJoinRequestsReq, opts ...grpc.CallOption) (*GetSentJoinRequestsResp, error)
+	// 获取所有管理群组的入群申请（通知中心）
+	GetAllManagedGroupJoinRequests(ctx context.Context, in *GetAllManagedGroupJoinRequestsReq, opts ...grpc.CallOption) (*GetAllManagedGroupJoinRequestsResp, error)
 }
 
 type groupClient struct {
@@ -287,6 +289,15 @@ func (c *groupClient) GetSentJoinRequests(ctx context.Context, in *GetSentJoinRe
 	return out, nil
 }
 
+func (c *groupClient) GetAllManagedGroupJoinRequests(ctx context.Context, in *GetAllManagedGroupJoinRequestsReq, opts ...grpc.CallOption) (*GetAllManagedGroupJoinRequestsResp, error) {
+	out := new(GetAllManagedGroupJoinRequestsResp)
+	err := c.cc.Invoke(ctx, "/group.Group/GetAllManagedGroupJoinRequests", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // GroupServer is the server API for Group service.
 // All implementations must embed UnimplementedGroupServer
 // for forward compatibility
@@ -339,6 +350,8 @@ type GroupServer interface {
 	GetGroupJoinRequests(context.Context, *GetGroupJoinRequestsReq) (*GetGroupJoinRequestsResp, error)
 	// 获取用户发出的入群申请
 	GetSentJoinRequests(context.Context, *GetSentJoinRequestsReq) (*GetSentJoinRequestsResp, error)
+	// 获取所有管理群组的入群申请（通知中心）
+	GetAllManagedGroupJoinRequests(context.Context, *GetAllManagedGroupJoinRequestsReq) (*GetAllManagedGroupJoinRequestsResp, error)
 	mustEmbedUnimplementedGroupServer()
 }
 
@@ -414,6 +427,9 @@ func (UnimplementedGroupServer) GetGroupJoinRequests(context.Context, *GetGroupJ
 }
 func (UnimplementedGroupServer) GetSentJoinRequests(context.Context, *GetSentJoinRequestsReq) (*GetSentJoinRequestsResp, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetSentJoinRequests not implemented")
+}
+func (UnimplementedGroupServer) GetAllManagedGroupJoinRequests(context.Context, *GetAllManagedGroupJoinRequestsReq) (*GetAllManagedGroupJoinRequestsResp, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetAllManagedGroupJoinRequests not implemented")
 }
 func (UnimplementedGroupServer) mustEmbedUnimplementedGroupServer() {}
 
@@ -842,6 +858,24 @@ func _Group_GetSentJoinRequests_Handler(srv interface{}, ctx context.Context, de
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Group_GetAllManagedGroupJoinRequests_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetAllManagedGroupJoinRequestsReq)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(GroupServer).GetAllManagedGroupJoinRequests(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/group.Group/GetAllManagedGroupJoinRequests",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(GroupServer).GetAllManagedGroupJoinRequests(ctx, req.(*GetAllManagedGroupJoinRequestsReq))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Group_ServiceDesc is the grpc.ServiceDesc for Group service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -940,6 +974,10 @@ var Group_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetSentJoinRequests",
 			Handler:    _Group_GetSentJoinRequests_Handler,
+		},
+		{
+			MethodName: "GetAllManagedGroupJoinRequests",
+			Handler:    _Group_GetAllManagedGroupJoinRequests_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

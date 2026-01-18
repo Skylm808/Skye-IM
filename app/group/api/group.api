@@ -327,5 +327,9 @@ service group-api {
 	@doc "获取我发出的入群申请"
 	@handler GetSentJoinRequests
 	get /join/sent (GetJoinRequestsReq) returns (Response)
+
+	@doc "获取所有管理群组的入群申请"
+	@handler GetReceivedJoinRequests
+	get /join/received (GetJoinRequestsReq) returns (Response)
 }
 

@@ -17,6 +17,9 @@
 > **前端项目**：[Skye-IM-Front](https://github.com/Skylm808/Skye-IM-Front) - 基于 React + Ant Design 的现代化 IM 客户端
 
 ---
+**卡通信息图介绍**
+![项目架构卡通图](assets/image.jpg)
+
 
 ## ✨ 功能特性
 

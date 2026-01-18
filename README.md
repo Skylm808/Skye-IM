@@ -417,6 +417,20 @@ WebSocket:
 | **WebSocket** | [WEBSOCKET_API文档.md](API/WEBSOCKET_API文档.md) | 实时消息推送协议 |
 | **API网关** | [GATEWAY_API文档.md](API/GATEWAY_API文档.md) | 网关路由规则与统一鉴权 |
 
+## 🏗️ 架构文档
+
+为了帮助开发者更好地理解系统内部的模块设计，我们提供了详细的架构设计文档：
+
+| 模块 | 文档链接 | 说明 |
+|------|---------|------|
+| **认证服务** | [AUTH_ARCHITECTURE.md](docs/AUTH_ARCHITECTURE.md) | 认证流程、Token管理设计 |
+| **网关服务** | [GATEWAY-ARCHITECTURE.md](docs/GATEWAY-ARCHITECTURE.md) | 网关路由、鉴权、限流设计 |
+| **用户服务** | [USER-ARCHITECTURE.md](docs/USER-ARCHITECTURE.md) | 用户模型、信息管理设计 |
+| **好友服务** | [friend_ARCHITECTURE.md](docs/friend_ARCHITECTURE.md) | 好友关系链、申请流程设计 |
+| **群组服务** | [GROUP-ARCHITECTURE.md](docs/GROUP-ARCHITECTURE.md) | 群组管理、成员变更设计 |
+| **消息服务** | [MESSAGE-ARCHITECTURE.md](docs/MESSAGE-ARCHITECTURE.md) | 消息投递、存储、离线同步设计 |
+| **WebSocket** | [WS_ARCHITECTURE.md](docs/WS_ARCHITECTURE.md) | 长连接维护、消息推送机制 |
+
 ## 👨‍💻 开发指南
 
 ### 项目结构

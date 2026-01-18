@@ -9,6 +9,7 @@ CREATE TABLE IF NOT EXISTS `im_message` (
     `content` TEXT NOT NULL COMMENT '消息内容',
     `content_type` TINYINT NOT NULL DEFAULT 1 COMMENT '消息内容类型: 1-文字 2-图片 3-文件 4-语音 5-视频',
     `status` TINYINT NOT NULL DEFAULT 0 COMMENT '消息状态: 0-未读/未处理 1-已读 2-撤回 3-删除',
+    `at_user_ids` TEXT COMMENT '被@的用户ID列表,JSON格式,如["123","456"],@all用特殊值"-1"',
     `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     PRIMARY KEY (`id`),
@@ -18,10 +19,6 @@ CREATE TABLE IF NOT EXISTS `im_message` (
     KEY `idx_group_id` (`group_id`),
     KEY `idx_conversation` (`from_user_id`, `to_user_id`, `created_at`),
     KEY `idx_unread` (`to_user_id`, `status`, `created_at`),
-    KEY `idx_group_seq` (`group_id`, `seq`)
+    KEY `idx_group_seq` (`group_id`, `seq`),
+    KEY `idx_at_users` (`group_id`, `chat_type`) USING BTREE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='IM 消息主表(支持私聊与群聊)';
-ALTER TABLE `im_message` 
-ADD COLUMN `at_user_ids` TEXT COMMENT '被@的用户ID列表,JSON格式,如["123","456"],@all用特殊值"-1"';
--- 添加索引以优化查询@我的消息
-ALTER TABLE `im_message`
-ADD INDEX `idx_at_users` (`group_id`, `chat_type`) USING BTREE;

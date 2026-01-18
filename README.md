@@ -307,32 +307,35 @@ WebSocket:
 └──────┬──────┘
        │ HTTP/WebSocket
        ▼
-┌─────────────────────────────────────┐
-│       API Gateway (8080)            │
-│  ┌──────────┬───────────────────┐  │
-│  │ JWT 鉴权 │ 服务发现 (etcd)   │  │
-│  └──────────┴───────────────────┘  │
-└─────────────────┬───────────────────┘
-                  │
-      ┌───────────┼───────────┬───────────┐
-      ▼           ▼           ▼           ▼
-┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐
-│ Auth API │ │ User API │ │Friend API│ │Group API │
-│  :10001  │ │  :10100  │ │  :10200  │ │  :10500  │
-└────┬─────┘ └────┬─────┘ └────┬─────┘ └────┬─────┘
-     │            │            │            │
-     └────────────┴────────────┴────────────┘
-                  │
-          ┌───────┴────────┐
-          ▼                ▼
-    ┌──────────┐     ┌──────────┐
-    │  MySQL   │     │  Redis   │
-    └──────────┘     └──────────┘
+┌───────────────────────────────────────┐
+│          API Gateway (8080)           │
+│  ┌──────────┬──────────────────────┐  │
+│  │ JWT 鉴权 │   服务发现 (etcd)    │  │
+│  │          │   负载均衡 (gRPC)    │  │
+│  └──────────┴──────────────────────┘  │
+└──────────────────┬────────────────────┘
+                   │ HTTP (部分直接调用)
+                   │ gRPC (大多数内部调用)
+      ┌────────────┼─────────────┬─────────────┐
+      ▼            ▼             ▼             ▼
+┌───────────┐ ┌──────────┐ ┌───────────┐ ┌───────────┐
+│Auth Service││ User Service││Message Service│ │ Group Service │
+│ API:10001 │ │ API:10100│ │ API:10400 │ │ API:10500 │
+│           │ │ RPC:9100 │ │ RPC:9300  │ │ RPC:9400  │
+└─────┬─────┘ └────┬─────┘ └─────┬─────┘ └─────┬─────┘
+      │            │             │             │
+      └────────────┴─────────────┴─────────────┘
+                   │
+           ┌───────┴────────┐
+           ▼                ▼
+     ┌──────────┐     ┌──────────┐
+     │  MySQL   │     │  Redis   │
+     └──────────┘     └──────────┘
 
-    ┌──────────────────────────┐
-    │   WebSocket Server       │
-    │        :10300            │
-    └──────────────────────────┘
+     ┌──────────────────────────┐
+     │   WebSocket Server       │
+     │        :10300            │
+     └──────────────────────────┘
 ```
 
 ### 服务清单
@@ -377,84 +380,42 @@ WebSocket:
   - 群聊离线同步：`GET /api/v1/message/group/sync`
 
 #### 💾 数据层
+#### 💾 数据层
 - **MySQL**：持久化存储，支持事务
 - **Redis 缓存**：
   - Model 级缓存（go-zero 自动）
   - 验证码存储（5 分钟 TTL）
   - 会话管理
 
+### 🗄️ 数据库 Schema
+
+| 模块 | 表定义 (SQL) |用于功能 |
+|------|-------------|---------|
+| **认证/用户** | [user.sql](app/auth/model/user.sql) | 用户基础信息、密码等 |
+| **好友关系** | [im_friend.sql](app/friend/im_friend.sql) | 好友列表、备注等 |
+| **好友申请** | [im_friend_request.sql](app/friend/im_friend_request.sql) | 待处理的好友请求 |
+| **消息/聊天** | [im_message.sql](app/message/im_message.sql) | 私聊/群聊消息记录 |
+| **群组信息** | [im_group.sql](app/group/im_group.sql) | 群基础信息(名、头像) |
+| **群成员** | [im_group_member.sql](app/group/im_group_member.sql) | 群员列表、角色、禁言 |
+| **群邀请** | [im_group_invitation.sql](app/group/im_group_invitation.sql) | 邀请入群记录 |
+| **入群申请** | [im_group_join_request.sql](app/group/im_group_join_request.sql) | 主动加群申请记录 |
+
 ---
 
 ## 📖 API 文档
 
-### 认证服务 (Auth)
+详细的 API 接口文档请查阅 `API/` 目录下的具体文档：
 
-| 接口 | 方法 | 路径 | 说明 |
-|------|------|------|------|
-| 发送验证码 | POST | `/api/v1/auth/captcha/send` | 发送邮箱验证码 |
-| 注册 | POST | `/api/v1/auth/register` | 用户注册 |
-| 登录 | POST | `/api/v1/auth/login` | 用户登录 |
-| 刷新 Token | POST | `/api/v1/auth/refresh` | 刷新访问令牌 |
-| 退出登录 | POST | `/api/v1/auth/logout` | 用户登出 |
-| 获取用户信息 | GET | `/api/v1/auth/userinfo` | 获取当前用户信息 |
-
-### 好友服务 (Friend)
-
-| 接口 | 方法 | 路径 | 说明 |
-|------|------|------|------|
-| 发送好友申请 | POST | `/api/v1/friend/request` | 发送好友申请 |
-| 处理好友申请 | POST | `/api/v1/friend/request/handle` | 接受/拒绝好友申请 |
-| 好友列表 | GET | `/api/v1/friend/list` | 获取好友列表 |
-| 删除好友 | DELETE | `/api/v1/friend/delete` | 删除好友 |
-| 设置备注 | PUT | `/api/v1/friend/remark` | 设置好友备注 |
-| 黑名单管理 | POST/GET | `/api/v1/friend/blacklist` | 拉黑/查看黑名单 |
-
-### 群组服务 (Group)
-
-| 接口 | 方法 | 路径 | 说明 |
-|------|------|------|------|
-| 创建群组 | POST | `/api/v1/group/create` | 创建新群组 |
-| 解散群组 | DELETE | `/api/v1/group/dismiss` | 解散群组（群主） |
-| 退出群组 | POST | `/api/v1/group/quit` | 退出群聊 |
-| 邀请成员 | POST | `/api/v1/group/invite` | 邀请用户入群 |
-| 踢出成员 | DELETE | `/api/v1/group/kick` | 踢出群成员 |
-| 入群申请 | POST | `/api/v1/group/join/request` | 申请加入群聊 |
-| 处理申请 | POST | `/api/v1/group/join/handle` | 处理入群申请 |
-| 群组搜索 | GET | `/api/v1/group/search` | 搜索群组 |
-
-### 消息服务 (Message)
-
-| 接口 | 方法 | 路径 | 说明 |
-|------|------|------|------|
-| 发送消息 | POST | `/api/v1/message/send` | 发送私聊消息 |
-| 发送群消息 | POST | `/api/v1/message/group/send` | 发送群聊消息 |
-| 消息列表 | GET | `/api/v1/message/list` | 获取消息历史 |
-| 标记已读 | POST | `/api/v1/message/read` | 标记消息已读 |
-| 未读消息 | GET | `/api/v1/message/unread` | 获取未读消息 |
-| 搜索消息 | GET | `/api/v1/message/search` | 模糊搜索消息 |
-| @我的消息 | GET | `/api/v1/message/at-me` | 获取@我的消息 |
-
-### WebSocket 连接
-
-```javascript
-// 连接 WebSocket (端口 10300)
-const ws = new WebSocket('ws://localhost:10300/ws?token=YOUR_ACCESS_TOKEN');
-
-// 监听消息
-ws.onmessage = (event) => {
-  const data = JSON.parse(event.data);
-  console.log('收到消息:', data);
-};
-
-// 发送消息
-ws.send(JSON.stringify({
-  type: 'chat',
-  to_user_id: 123,
-  content: 'Hello!'
-}));
-```
-
----
+| 模块 | 文档链接 | 说明 |
+|------|---------|------|
+| **认证服务** | [AUTH_API文档.md](API/AUTH_API文档.md) | 注册、登录、验证码、Token刷新 |
+| **用户服务** | [USER_API文档.md](API/USER_API文档.md) | 用户信息、搜索用户 |
+| **好友服务** | [FRIEND_API文档.md](API/FRIEND_API文档.md) | 好友申请、黑名单、好友列表 |
+| **群组服务** | [GROUP_API文档.md](API/GROUP_API文档.md) | 群组管理、成员管理、入群申请 |
+| **消息服务** | [MESSAGE_API文档.md](API/MESSAGE_API文档.md) | 私聊/群聊消息、历史记录 |
+| **文件上传** | [UPLOAD_API.md](API/UPLOAD_API.md) | 头像上传、文件管理 |
+| **WebSocket** | [WEBSOCKET_API文档.md](API/WEBSOCKET_API文档.md) | 实时消息推送协议 |
+| **API网关** | [GATEWAY_API文档.md](API/GATEWAY_API文档.md) | 网关路由规则与统一鉴权 |
 
 ## 👨‍💻 开发指南
 

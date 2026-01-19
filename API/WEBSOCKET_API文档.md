@@ -283,21 +283,68 @@ GET /api/v1/message/offline?skip=20&limit=100
 
 ### 4. 接收事件通知
 
-**好友请求通知**:
+#### 4.1 好友请求通知
+
+**新的好友请求** (`friend_request`)：
 ```json
 {
   "type": "friend_request",
   "data": {
     "id": 123,
     "fromUserId": 1002,
-    "fromUserName": "李四",
     "message": "我是李四，想加你为好友",
     "createdAt": 1736683200
   }
 }
 ```
 
-**群组邀请通知**:
+**字段说明**：
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `id` | int64 | 好友请求记录 ID |
+| `fromUserId` | int64 | 发起请求的用户 ID |
+| `message` | string | 申请消息 |
+| `createdAt` | int64 | 创建时间戳（秒） |
+
+**前端处理**：
+- 实时在通知列表中显示新的好友请求
+- 更新好友请求红点数量
+- 调用 `GET /api/v1/user/:id` 获取请求方的用户信息
+
+---
+
+**好友请求处理结果** (`friend_request_handled`)：
+```json
+{
+  "type": "friend_request_handled",
+  "data": {
+    "requestId": 123,
+    "toUserId": 1003,
+    "action": "accepted",
+    "handledAt": 1736683300
+  }
+}
+```
+
+**字段说明**：
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `requestId` | int64 | 好友请求记录 ID |
+| `toUserId` | int64 | 处理请求的用户 ID（对方） |
+| `action` | string | 处理结果：`"accepted"` 或 `"rejected"` |
+| `handledAt` | int64 | 处理时间戳（秒） |
+
+**前端处理**：
+- 如果 `action === "accepted"`：刷新好友列表，显示"已接受"提示
+- 如果 `action === "rejected"`：更新请求状态为"已拒绝"
+
+---
+
+#### 4.2 群组邀请通知
+
+**新的群组邀请** (`group_invitation`)：
 ```json
 {
   "type": "group_invitation",
@@ -306,14 +353,63 @@ GET /api/v1/message/offline?skip=20&limit=100
     "groupId": "g_20260113_001",
     "groupName": "技术交流群",
     "inviterId": 1003,
-    "inviterName": "王五",
     "message": "来我们群聊聊天吧",
     "createdAt": 1736683300
   }
 }
 ```
 
-**已读回执**:
+**字段说明**：
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `invitationId` | int64 | 群组邀请记录 ID |
+| `groupId` | string | 群组 ID |
+| `groupName` | string | 群组名称 |
+| `inviterId` | int64 | 邀请人用户 ID |
+| `message` | string | 邀请消息 |
+| `createdAt` | int64 | 创建时间戳（秒） |
+
+**前端处理**：
+- 实时在通知列表中显示新的群组邀请
+- 更新群组邀请红点数量
+- 调用 `GET /api/v1/user/:id` 获取邀请人信息
+
+---
+
+**群组邀请处理结果** (`group_invitation_handled`)：
+```json
+{
+  "type": "group_invitation_handled",
+  "data": {
+    "invitationId": 456,
+    "groupId": "g_20260113_001",
+    "inviteeId": 1004,
+    "action": "accepted",
+    "handledAt": 1736683400
+  }
+}
+```
+
+**字段说明**：
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `invitationId` | int64 | 群组邀请记录 ID |
+| `groupId` | string | 群组 ID |
+| `inviteeId` | int64 | 被邀请人用户 ID |
+| `action` | string | 处理结果：`"accepted"` 或 `"rejected"` |
+| `handledAt` | int64 | 处理时间戳（秒） |
+
+**前端处理**：
+- 如果 `action === "accepted"`：显示"已接受"提示，可选刷新群组成员列表
+- 如果 `action === "rejected"`：更新邀请状态为"已拒绝"
+
+---
+
+#### 4.3 已读回执
+
+**已读回执**：
 ```json
 {
   "type": "read",
@@ -329,62 +425,102 @@ GET /api/v1/message/offline?skip=20&limit=100
 
 ## 前端事件处理指南
 
-本节详细说明收到各类 `group_event` 时的推荐处理逻辑。
+本节详细说明收到各类事件时的推荐处理逻辑。
 
-**消息格式**:
+---
+
+### 1. 群组解散 (`dismissGroup`)
+
+**触发时机**: 群主解散群聊。
+
+**数据格式**:
 ```json
 {
-  "type": "group_event",
-  "eventType": "dismissGroup", // 事件类型
-  "eventData": { ... } // 数据
+  "type": "dismissGroup",
+  "eventData": {
+    "groupId": "g_20260113_001",
+    "operatorId": 888
+  }
 }
 ```
 
-### 1. 群组解散 (dismissGroup)
+**前端处理**:
+1. 弹出提示：「群聊已被解散」
+2. **状态更新**：从本地群组列表中**移除**该群
+3. **界面跳转**：如果当前正在该群聊天，强制跳转回首页
 
-**触发时机**: 群主解散群聊。
-**数据示例**: `{"groupId": "1001", "operatorId": 888}`
+---
 
-**前端动作**:
-1. 弹出提示："群聊 [1001] 已被解散"。
-2. **状态更新**：从本地 Store (Redux/Vuex) 的群组列表中**移除**该群。
-3. **界面跳转**：如果用户当前正停留在该群的聊天界面，强制跳转回首页或空白页。
-
-### 2. 成员被踢 (kickMember)
+### 2. 成员被踢 (`kickMember`)
 
 **触发时机**: 管理员将成员移出群聊。
-**数据示例**: `{"operatorId": 888, "memberId": 999, "groupId": "1001"}`
 
-**前端动作**:
-*   **如果不幸是你 (`memberId == currentUser.id`)**:
-    1. 弹出提示："你已被移出群聊 [1001]"。
-    2. **状态更新**：从本地 Store 的群组列表中**移除**该群。
-    3. **界面跳转**：如果正在该群聊天，强制退出。
+**数据格式**:
+```json
+{
+  "type": "kickMember",
+  "eventData": {
+    "operatorId": 888,
+    "memberId": 999,
+    "groupId": "g_20260113_001"
+  }
+}
+```
+
+**前端处理**:
+*   **如果是你被踢 (`memberId == currentUser.id`)**:
+    1. 弹出提示：「你已被移出群聊」
+    2. **状态更新**：从本地群组列表中**移除**该群
+    3. **界面跳转**：如果正在该群聊天，强制退出
 *   **如果是别人被踢**:
-    1. **状态更新**：从该群的"成员列表"中移除该用户。
-    2. (可选) 在聊天窗口插入一条系统消息："用户 [999] 被移出群聊"。
+    1. **状态更新**：从该群的成员列表中移除该用户
+    2. (可选) 在聊天窗口插入系统消息：「用户 XXX 被移出群聊」
 
-### 3. 主动退群 (quitGroup)
+---
+
+### 3. 主动退群 (`quitGroup`)
 
 **触发时机**: 成员主动退出。
-**数据示例**: `{"userId": 999, "groupId": "1001"}`
 
-**前端动作**:
-1. **状态更新**：从该群的"成员列表"中移除该用户。
-2. (可选) 在聊天窗口插入一条系统消息："用户 [999] 退出了群聊"。
+**数据格式**:
+```json
+{
+  "type": "quitGroup",
+  "eventData": {
+    "userId": 999,
+    "groupId": "g_20260113_001"
+  }
+}
+```
 
-### 4. 新成员加入 (joinGroup)
+**前端处理**:
+1. **状态更新**：从该群的成员列表中移除该用户
+2. (可选) 在聊天窗口插入系统消息：「用户 XXX 退出了群聊」
+
+---
+
+### 4. 新成员加入 (`joinGroup`)
 
 **触发时机**: 接受邀请入群 或 管理员同意加群申请。
-**数据示例**: `{"userId": 999, "groupId": "1001"}`
 
-**前端动作**:
+**数据格式**:
+```json
+{
+  "type": "joinGroup",
+  "eventData": {
+    "userId": 999,
+    "groupId": "g_20260113_001"
+  }
+}
+```
+
+**前端处理**:
 *   **如果是你加入了新群 (`userId == currentUser.id`)**:
-    1. **API调用**：立即调用 `GET /api/v1/group/:id` 获取该群的详细信息。
-    2. **状态更新**：将新群添加到本地群组列表的最上方。
+    1. **API调用**：立即调用 `GET /api/v1/group/:id` 获取该群的详细信息
+    2. **状态更新**：将新群添加到本地群组列表的最上方
 *   **如果是别人加入**:
-    1. **状态更新**：将该用户添加到"成员列表"中。
-    2. (可选) 在聊天窗口插入一条系统消息："欢迎用户 [999] 加入群聊"。
+    1. **状态更新**：将该用户添加到成员列表中
+    2. (可选) 在聊天窗口插入系统消息：「欢迎用户 XXX 加入群聊」
 
 ---
 
@@ -627,6 +763,178 @@ websocket.close(1000, "正常关闭");
 
 ---
 
+## 前端集成完整示例
+
+### WebSocket 连接与消息处理
+
+```javascript
+class WebSocketManager {
+  constructor(wsUrl, token) {
+    this.wsUrl = wsUrl;
+    this.token = token;
+    this.socket = null;
+    this.handlers = new Map();
+  }
+  
+  connect() {
+    this.socket = new WebSocket(`${this.wsUrl}?token=${this.token}`);
+    
+    this.socket.onopen = () => {
+      console.log('[WS] Connected');
+    };
+    
+    this.socket.onmessage = (event) => {
+      try {
+        const message = JSON.parse(event.data);
+        this.handleMessage(message);
+      } catch (e) {
+        console.error('[WS] Parse error:', e);
+      }
+    };
+    
+    this.socket.onerror = (error) => {
+      console.error('[WS] Error:', error);
+    };
+    
+    this.socket.onclose = () => {
+      console.log('[WS] Disconnected, reconnecting...');
+      setTimeout(() => this.connect(), 3000);
+    };
+  }
+  
+  // 注册消息处理器
+  on(type, handler) {
+    if (!this.handlers.has(type)) {
+      this.handlers.set(type, []);
+    }
+    this.handlers.get(type).push(handler);
+  }
+  
+  // 分发消息
+  handleMessage(message) {
+    const { type, data } = message;
+    
+    const handlers = this.handlers.get(type);
+    if (handlers) {
+      handlers.forEach(handler => handler(data));
+    }
+  }
+}
+
+// 使用示例
+const wsManager = new WebSocketManager('ws://localhost:10300/ws', userToken);
+
+// 注册各类消息处理器
+wsManager.on('friend_request', (data) => {
+  const { id, fromUserId, message, createdAt } = data;
+  // 显示好友请求通知
+  showNotification('新的好友请求', message);
+  // 更新红点
+  updateFriendRequestBadge(+1);
+});
+
+wsManager.on('friend_request_handled', (data) => {
+  const { action } = data;
+  if (action === 'accepted') {
+    // 刷新好友列表
+    refreshFriendList();
+  }
+});
+
+wsManager.on('group_invitation', (data) => {
+  const { groupName, inviterId } = data;
+  // 显示群组邀请通知
+  showNotification('群组邀请', `邀请你加入「${groupName}」`);
+});
+
+wsManager.on('joinGroup', (data) => {
+  const { userId, groupId } = data;
+  if (userId === currentUserId) {
+    // 自己加入了新群，获取群组信息
+    fetchGroupInfo(groupId);
+  } else {
+    // 别人加入群，更新成员列表
+    addGroupMember(groupId, userId);
+  }
+});
+
+wsManager.on('kickMember', (data) => {
+  const { memberId, groupId } = data;
+  if (memberId === currentUserId) {
+    // 你被踢了
+    removeGroupFromList(groupId);
+    navigateToHome();
+  }
+});
+
+wsManager.on('dismissGroup', (data) => {
+  const { groupId } = data;
+  // 群组解散
+  removeGroupFromList(groupId);
+  if (currentChatGroupId === groupId) {
+    navigateToHome();
+  }
+});
+
+// 连接
+wsManager.connect();
+```
+
+### TypeScript 类型定义
+
+```typescript
+// 好友请求通知
+interface FriendRequestData {
+  id: number;
+  fromUserId: number;
+  message: string;
+  createdAt: number;
+}
+
+// 好友请求处理结果
+interface FriendRequestHandledData {
+  requestId: number;
+  toUserId: number;
+  action: 'accepted' | 'rejected';
+  handledAt: number;
+}
+
+// 群组邀请通知
+interface GroupInvitationData {
+  invitationId: number;
+  groupId: string;
+  groupName: string;
+  inviterId: number;
+  message: string;
+  createdAt: number;
+}
+
+// 群组邀请处理结果
+interface GroupInvitationHandledData {
+  invitationId: number;
+  groupId: string;
+  inviteeId: number;
+  action: 'accepted' | 'rejected';
+  handledAt: number;
+}
+
+// 成员加入/退出/被踢
+interface GroupMemberEventData {
+  userId: number;
+  groupId: string;
+  operatorId?: number; // kickMember 时存在
+  memberId?: number;   // kickMember 时存在
+}
+
+// 群组解散
+interface DismissGroupData {
+  groupId: string;
+  operatorId: number;
+}
+```
+
+---
+
 **文档维护**: Skylm  
-**最后更新**: 2026-01-15  
+**最后更新**: 2026-01-19  
 **相关文档**: [WebSocket 架构设计](./ARCHITECTURE.md)

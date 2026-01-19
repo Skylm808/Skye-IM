@@ -54,11 +54,11 @@ func main() {
 		},
 	})
 
-	// 群组事件推送接口（内部调用）
-	pushHandler := handler.NewPushEventHandler(ctx, hub)
+	// 统一的推送接口（内部调用）
+	pushHandler := handler.NewPushHandler(ctx, hub)
 	server.AddRoute(rest.Route{
 		Method:  http.MethodPost,
-		Path:    "/api/push/event",
+		Path:    "/api/push",
 		Handler: pushHandler.ServeHTTP,
 	})
 

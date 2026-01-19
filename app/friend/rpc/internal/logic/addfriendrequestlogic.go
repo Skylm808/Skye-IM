@@ -2,6 +2,7 @@ package logic
 
 import (
 	"context"
+	"time"
 
 	"SkyeIM/app/friend/rpc/friend"
 	"SkyeIM/app/friend/rpc/internal/svc"
@@ -73,6 +74,17 @@ func (l *AddFriendRequestLogic) AddFriendRequest(in *friend.AddFriendRequestReq)
 	}
 
 	requestId, _ := result.LastInsertId()
+
+	// 6. 推送好友请求通知给被请求方
+	go func() {
+		_ = l.svcCtx.WsPushClient.PushToUser(in.ToUserId, "friend_request", map[string]interface{}{
+			"id":         requestId,
+			"fromUserId": in.FromUserId,
+			"message":    in.Message,
+			"createdAt":  time.Now().Unix(),
+		})
+	}()
+
 	return &friend.AddFriendRequestResp{
 		RequestId: requestId,
 	}, nil

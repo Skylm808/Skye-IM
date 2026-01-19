@@ -84,21 +84,17 @@ func (l *SendGroupInvitationLogic) SendGroupInvitation(in *group.SendGroupInvita
 		return nil, errors.New("发送邀请失败")
 	}
 
-	// 6. 通过WebSocket推送通知给被邀请人（后续补充PushToUser方法）
-	// TODO: 实现WebSocket推送
-	/*
-		go l.svcCtx.WsPushClient.PushToUser(in.InviteeId, map[string]interface{}{
-			"type": 9, // MessageTypeGroupInvitation
-			"data": map[string]interface{}{
-				"invitationId": invitationId,
-				"groupId":      in.GroupId,
-				"groupName":    groupInfo.Name,
-				"inviterId":    in.InviterId,
-				"message":      in.Message,
-				"createdAt":    time.Now().Unix(),
-			},
+	// 6. 通过WebSocket推送通知给被邀请人
+	go func() {
+		_ = l.svcCtx.WsPushClient.PushToUser(in.InviteeId, "group_invitation", map[string]interface{}{
+			"invitationId": invitationId,
+			"groupId":      in.GroupId,
+			"groupName":    groupInfo.Name,
+			"inviterId":    in.InviterId,
+			"message":      in.Message,
+			"createdAt":    time.Now().Unix(),
 		})
-	*/
+	}()
 
 	return &group.SendGroupInvitationResp{
 		InvitationId: invitationId,

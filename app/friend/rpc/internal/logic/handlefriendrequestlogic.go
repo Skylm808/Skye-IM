@@ -2,6 +2,7 @@ package logic
 
 import (
 	"context"
+	"time"
 
 	"SkyeIM/app/friend/rpc/friend"
 	"SkyeIM/app/friend/rpc/internal/svc"
@@ -81,6 +82,20 @@ func (l *HandleFriendRequestLogic) HandleFriendRequest(in *friend.HandleFriendRe
 		l.Logger.Errorf("更新申请状态失败: %v", err)
 		return nil, status.Error(codes.Internal, "处理申请失败")
 	}
+
+	// 5. 推送通知给请求方
+	go func() {
+		actionText := "rejected"
+		if in.Action == 1 {
+			actionText = "accepted"
+		}
+		_ = l.svcCtx.WsPushClient.PushToUser(int64(request.FromUserId), "friend_request_handled", map[string]interface{}{
+			"requestId": in.RequestId,
+			"toUserId":  request.ToUserId,
+			"action":    actionText,
+			"handledAt": time.Now().Unix(),
+		})
+	}()
 
 	return &friend.HandleFriendRequestResp{}, nil
 }

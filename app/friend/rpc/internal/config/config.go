@@ -10,5 +10,7 @@ type Config struct {
 	MySQL struct {
 		DataSource string
 	}
-	Cache cache.CacheConf
+	Cache        cache.CacheConf
+	WsServiceUrl string
+	WsPushSecret string
 }

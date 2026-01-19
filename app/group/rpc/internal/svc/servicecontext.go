@@ -3,7 +3,7 @@ package svc
 import (
 	"SkyeIM/app/group/model"
 	"SkyeIM/app/group/rpc/internal/config"
-	"SkyeIM/app/group/rpc/internal/wspush"
+	"SkyeIM/common/wspush"
 
 	"github.com/zeromicro/go-zero/core/stores/redis"
 	"github.com/zeromicro/go-zero/core/stores/sqlx"

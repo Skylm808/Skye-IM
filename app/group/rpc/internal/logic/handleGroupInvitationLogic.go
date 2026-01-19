@@ -109,6 +109,28 @@ func (l *HandleGroupInvitationLogic) HandleGroupInvitation(in *group.HandleGroup
 		l.svcCtx.WsPushClient.PushGroupEvent(invitation.GroupId, "joinGroup", map[string]interface{}{
 			"userId": invitation.InviteeId,
 		})
+
+		// 推送通知给邀请方
+		go func() {
+			_ = l.svcCtx.WsPushClient.PushToUser(int64(invitation.InviterId), "group_invitation_handled", map[string]interface{}{
+				"invitationId": in.InvitationId,
+				"groupId":      invitation.GroupId,
+				"inviteeId":    invitation.InviteeId,
+				"action":       "accepted",
+				"handledAt":    time.Now().Unix(),
+			})
+		}()
+	} else {
+		// 拒绝邀请，推送通知给邀请方
+		go func() {
+			_ = l.svcCtx.WsPushClient.PushToUser(int64(invitation.InviterId), "group_invitation_handled", map[string]interface{}{
+				"invitationId": in.InvitationId,
+				"groupId":      invitation.GroupId,
+				"inviteeId":    invitation.InviteeId,
+				"action":       "rejected",
+				"handledAt":    time.Now().Unix(),
+			})
+		}()
 	}
 
 	return &group.HandleGroupInvitationResp{}, nil

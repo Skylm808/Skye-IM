@@ -107,7 +107,8 @@ func (l *HandleGroupInvitationLogic) HandleGroupInvitation(in *group.HandleGroup
 
 		// 推送入群通知
 		l.svcCtx.WsPushClient.PushGroupEvent(invitation.GroupId, "joinGroup", map[string]interface{}{
-			"userId": invitation.InviteeId,
+			"userId":  invitation.InviteeId,
+			"groupId": invitation.GroupId,
 		})
 
 		// 推送通知给邀请方

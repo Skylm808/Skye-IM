@@ -98,7 +98,8 @@ func (l *HandleJoinRequestLogic) HandleJoinRequest(in *group.HandleJoinRequestRe
 
 			// 推送入群通知
 			_ = l.svcCtx.WsPushClient.PushGroupEvent(request.GroupId, "joinGroup", map[string]interface{}{
-				"userId": request.UserId,
+				"userId":  request.UserId,
+				"groupId": request.GroupId,
 			})
 		}
 	}

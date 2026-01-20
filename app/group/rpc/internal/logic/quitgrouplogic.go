@@ -67,7 +67,8 @@ func (l *QuitGroupLogic) QuitGroup(in *group.QuitGroupReq) (*group.QuitGroupResp
 
 	// 7. 推送通知
 	_ = l.svcCtx.WsPushClient.PushGroupEvent(in.GroupId, "quitGroup", map[string]interface{}{
-		"userId": in.UserId,
+		"userId":  in.UserId,
+		"groupId": in.GroupId,
 	})
 
 	return &group.QuitGroupResp{}, nil

@@ -143,7 +143,7 @@ id: 数据库自增主键（用于分页）
 2. **消息存储**: 插入 `im_message`，status=0（未读）
 3. **实时推送**: 
    - 接收者**在线** → WebSocket 立即推送
-   - 接收者**离线** → 缓存到 Redis 离线队列
+   - 接收者**离线** → 消息已存入数据库 (im_message)，下次上线主动拉取
 
 ---
 
@@ -200,19 +200,16 @@ id: 数据库自增主键（用于分页）
 用户上线（WebSocket 连接）
     ↓
 WebSocket 自动推送
-从 Redis 离线队列获取前 20 条
+用户上线（WebSocket 连接）
     ↓
-如果离线消息 > 20 条
+WebSocket 自动推送
+调用 RPC 获取未读消息
+(从数据库查询)
     ↓
-前端调用 HTTP API
-GET /api/v1/message/offline?skip=20&limit=100
+如果未读消息 > 20 条，仅推送最近 20 条
     ↓
-查询数据库
-WHERE to_user_id = ? AND status = 0
-ORDER BY id DESC
-LIMIT 100 OFFSET 20
-    ↓
-返回剩余离线消息
+前端显示离线消息摘要
+(后续可按需拉取更多)
 ```
 
 **群聊离线同步**：
@@ -359,21 +356,15 @@ ORDER BY id DESC;
 ### 5.4 离线消息存储
 
 **私聊离线消息**:
-```
-Redis List:
-Key: offline:private:{userId}
-Value: [消息1, 消息2, ...]
-TTL: 7天
-```
+- 存储在 MySQL `im_message` 表中
+- 用户上线时，`WsHandler` 调用 `MessageRpc` 拉取未读消息
+- 性能优化：限制单次推送条数（如 20 条），避免消息风暴
 
 **群聊离线消息**:
-- 不缓存到 Redis（数据量太大）
-- 直接通过 Seq 机制从数据库拉取
+- 存储在 MySQL `im_message` 表中
+- 用户上线时，根据 `read_seq` 拉取未读消息
 
-**为什么私聊用 Redis？**
-- ✅ 快速推送：用户上线立即推送
-- ✅ 减少数据库压力
-- ❌ 内存占用：需要设置 TTL
+
 
 ---
 
@@ -414,9 +405,9 @@ im_message_9  -- id % 10 = 9
 
 ### 6.2 缓存优化
 
-**1. 离线消息队列**:
-- 私聊离线消息缓存到 Redis
-- WebSocket 连接时快速推送
+**1. 离线消息拉取优化**:
+- 限制单次推送数量（20条）
+- 仅推送摘要信息
 
 **2. Seq 缓存**:
 - 群最新 Seq 缓存到 Redis
@@ -511,7 +502,7 @@ Message 微服务采用**分层架构**：
 - 📊 私聊和群聊统一表设计
 - 🚀 WebSocket 实时推送
 - 📖 Seq 机制支持离线同步
-- 💾 Redis 缓存离线消息
+- 💾 消息持久化存储 (MySQL)
 - 📢 @功能支持
 - 🎯 性能优化（索引、分页、缓存）
 

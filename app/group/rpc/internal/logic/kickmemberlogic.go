@@ -68,6 +68,7 @@ func (l *KickMemberLogic) KickMember(in *group.KickMemberReq) (*group.KickMember
 	_ = l.svcCtx.WsPushClient.PushGroupEvent(in.GroupId, "kickMember", map[string]interface{}{
 		"operatorId": in.OperatorId,
 		"memberId":   in.MemberId,
+		"groupId":    in.GroupId,
 	})
 
 	return &group.KickMemberResp{}, nil

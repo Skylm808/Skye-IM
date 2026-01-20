@@ -28,6 +28,8 @@ type (
 		FindGroupMessagesAfterSeq(ctx context.Context, groupId string, seq uint64) ([]*ImMessage, error)
 		// 模糊搜索消息内容
 		SearchByKeyword(ctx context.Context, userId int64, keyword string) ([]*ImMessage, error)
+		// 查询群组当前最大Seq
+		FindGroupMaxSeq(ctx context.Context, groupId string) (int64, error)
 		// 查询@我的消息
 		FindAtMeMessages(ctx context.Context, userId int64, groupId string, lastMsgId int64, limit int32) ([]*ImMessage, error)
 		// 暴露底层数据库操作方法
@@ -110,7 +112,7 @@ func (m *customImMessageModel) FindUnreadMessages(ctx context.Context, userId, p
 	}
 }
 
-// FindAllUnreadMessages 批量获取用户所有未读私聊消息（优化性能）
+// FindAllUnreadMessages 批量获取用户所有未读私聊消息（优化性能） 用于消息红点的未读消息的本身并放到列表里面
 func (m *customImMessageModel) FindAllUnreadMessages(ctx context.Context, userId int64) ([]*ImMessage, error) {
 	var resp []*ImMessage
 	query := fmt.Sprintf("select %s from %s where `chat_type` = 1 and `to_user_id` = ? and `status` = 0 order by `created_at` asc", imMessageRows, m.table)
@@ -124,7 +126,7 @@ func (m *customImMessageModel) FindAllUnreadMessages(ctx context.Context, userId
 	}
 }
 
-// CountUnreadMessages 统计未读消息数量
+// CountUnreadMessages 统计未读消息数量 用于消息红点的总数
 func (m *customImMessageModel) CountUnreadMessages(ctx context.Context, userId, peerId int64) (int64, error) {
 	var count int64
 	var query string
@@ -218,6 +220,20 @@ func (m *customImMessageModel) FindGroupMessagesAfterSeq(ctx context.Context, gr
 	default:
 		return nil, err
 	}
+}
+
+// FindGroupMaxSeq 查询群组当前最大Seq
+func (m *customImMessageModel) FindGroupMaxSeq(ctx context.Context, groupId string) (int64, error) {
+	var maxSeq sql.NullInt64
+	query := fmt.Sprintf("select max(seq) from %s where `chat_type` = 2 and `group_id` = ?", m.table)
+	err := m.QueryRowNoCacheCtx(ctx, &maxSeq, query, groupId)
+	if err != nil {
+		return 0, err
+	}
+	if maxSeq.Valid {
+		return maxSeq.Int64, nil
+	}
+	return 0, nil
 }
 
 // FindAtMeMessages 查询@我的消息（群聊）

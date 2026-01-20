@@ -68,6 +68,28 @@ func (l *SendGroupMessageLogic) SendGroupMessage(in *message.SendGroupMessageReq
 		return nil, status.Error(codes.Internal, "系统错误")
 	}
 
+	// 惰性恢复逻辑：如果Seq为1，检查数据库中是否已有消息
+	if seq == 1 {
+		maxSeq, err := l.svcCtx.ImMessageModel.FindGroupMaxSeq(l.ctx, in.GroupId)
+		if err != nil {
+			// 如果数据库查询失败，为了数据一致性，建议报错（防止产生重复Seq）
+			l.Logger.Errorf("查询群最大Seq失败: %v", err)
+			return nil, status.Error(codes.Internal, "系统错误")
+		}
+
+		if maxSeq > 0 {
+			// Redis数据丢失，需要恢复
+			// 将Redis设置为已有的最大Seq + 1 (即本次消息应有的Seq)
+			// 注意：这里存在极低概率的并发竞态，但在故障恢复场景下可接受
+			newSeq := int64(maxSeq) + 1
+			// 将Redis设置为已有的最大Seq + 1
+			l.svcCtx.Redis.Set(seqKey, fmt.Sprintf("%d", newSeq))
+
+			seq = newSeq
+			l.Logger.Infof("群 %s Seq 恢复: Redis=1 -> DB=%d -> New=%d", in.GroupId, maxSeq, seq)
+		}
+	}
+
 	contentType := in.ContentType
 	if contentType == 0 {
 		contentType = 1

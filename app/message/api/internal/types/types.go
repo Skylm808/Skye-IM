@@ -118,29 +118,3 @@ type SearchMessageReq struct {
 type SearchMessageResp struct {
 	List []MessageInfo `json:"list"`
 }
-
-type SendGroupMessageReq struct {
-	GroupId     string  `json:"groupId"`
-	Content     string  `json:"content"`
-	ContentType int32   `json:"contentType"`
-	AtUserIds   []int64 `json:"atUserIds,optional"` // 被@的用户ID列表，-1表示@全体
-}
-
-type SendGroupMessageResp struct {
-	Id        int64  `json:"id"`
-	MsgId     string `json:"msgId"`
-	CreatedAt int64  `json:"createdAt"`
-	Seq       uint64 `json:"seq"`
-}
-
-type SendMessageReq struct {
-	ToUserId    int64  `json:"toUserId"`
-	Content     string `json:"content"`
-	ContentType int32  `json:"contentType"` // 1-文本 2-图片 3-文件 4-语音
-}
-
-type SendMessageResp struct {
-	Id        int64  `json:"id"`
-	MsgId     string `json:"msgId"`
-	CreatedAt int64  `json:"createdAt"`
-}

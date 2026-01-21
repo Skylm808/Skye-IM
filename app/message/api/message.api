@@ -180,40 +180,5 @@ service message-api {
 	@doc "获取@我的消息列表"
 	@handler GetAtMeMessages
 	get /at-me (GetAtMeMessagesReq) returns (GetAtMeMessagesResp)
-
-	@doc "发送私聊消息（可选：主要走WS）"
-	@handler SendMessage
-	post /send (SendMessageReq) returns (SendMessageResp)
-
-	@doc "发送群聊消息（可选：主要走WS）"
-	@handler SendGroupMessage
-	post /group/send (SendGroupMessageReq) returns (SendGroupMessageResp)
-}
-
-// ==================== 发送（HTTP 可选） ====================
-type SendMessageReq {
-	ToUserId    int64  `json:"toUserId"`
-	Content     string `json:"content"`
-	ContentType int32  `json:"contentType"` // 1-文本 2-图片 3-文件 4-语音
-}
-
-type SendMessageResp {
-	Id        int64  `json:"id"`
-	MsgId     string `json:"msgId"`
-	CreatedAt int64  `json:"createdAt"`
-}
-
-type SendGroupMessageReq {
-	GroupId     string  `json:"groupId"`
-	Content     string  `json:"content"`
-	ContentType int32   `json:"contentType"`
-	AtUserIds   []int64 `json:"atUserIds,optional"` // 被@的用户ID列表，-1表示@全体
-}
-
-type SendGroupMessageResp {
-	Id        int64  `json:"id"`
-	MsgId     string `json:"msgId"`
-	CreatedAt int64  `json:"createdAt"`
-	Seq       uint64 `json:"seq"`
 }
 

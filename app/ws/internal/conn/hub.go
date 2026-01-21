@@ -161,7 +161,17 @@ func (h *Hub) SendToUser(userId int64, msg *Message) bool {
 		logx.Infof("[Hub] Sent message to user %d, type: %s", userId, msg.Type)
 		return true
 	default:
-		logx.Errorf("[Hub] Failed to send message to user %d: send buffer full", userId)
+		// send channel 满了，说明客户端很慢或已挂，主动关闭连接
+		logx.Errorf("[Hub] User %d send buffer full, closing connection", userId)
+
+		// 从 clients map 中移除并关闭连接
+		h.mu.Lock()
+		delete(h.clients, userId)
+		h.mu.Unlock()
+
+		// 关闭连接，让客户端重连后拉取离线消息
+		client.Close()
+
 		return false
 	}
 }
@@ -241,7 +251,12 @@ func (h *Hub) notifyOnlineStatus(userId int64, online bool) {
 			case client.send <- msg:
 				logx.Infof("[Hub] Notified friend %d about user %d %s", friendInfo.FriendId, userId, statusType)
 			default:
-				logx.Errorf("[Hub] Failed to notify friend %d (send buffer full)", friendInfo.FriendId)
+				// send channel 满了，延迟关闭连接（需要升级为写锁）
+				logx.Errorf("[Hub] Friend %d send buffer full, will close connection", friendInfo.FriendId)
+				// 注意：这里在读锁中，不能直接修改 map，通过 Unregister channel 处理
+				go func(c *Client) {
+					h.Unregister(c)
+				}(client)
 			}
 		}
 	}
@@ -317,7 +332,12 @@ func (h *Hub) routeGroupMessage(msg *GroupMessage) {
 			case client.send <- msg.Message:
 				logx.Infof("[Hub] Sent group message to user %d in group %s", userId, msg.GroupId)
 			default:
-				logx.Errorf("[Hub] Failed to send group message to user %d (send buffer full)", userId)
+				// send channel 满了，延迟关闭连接（需要升级为写锁）
+				logx.Errorf("[Hub] User %d send buffer full, will close connection", userId)
+				// 注意：这里在读锁中，不能直接修改 map，通过 Unregister channel 处理
+				go func(c *Client) {
+					h.Unregister(c)
+				}(client)
 			}
 		}
 	}

@@ -102,22 +102,8 @@ func (c *Client) handleChatMessage(data json.RawMessage) {
 	// 更新时间戳
 	chatMsg.CreatedAt = resp.CreatedAt
 
-	// 发送 ACK 给发送者（非阻塞）
-	ackMsg := &Message{
-		Type: "ack",
-		Data: mustMarshal(&AckMessage{
-			MsgId:     chatMsg.MsgId,
-			Status:    "sent",
-			Timestamp: resp.CreatedAt,
-		}),
-	}
-
-	select {
-	case c.send <- ackMsg:
-		logx.Infof("[Client] Sent ACK (sent) to user %d for message %s", c.UserId, chatMsg.MsgId)
-	default:
-		logx.Errorf("[Client] Failed to send ACK to user %d: send buffer full", c.UserId)
-	}
+	// 发送 ACK 给发送者
+	c.sendAck(chatMsg.MsgId, "sent", "", resp.CreatedAt)
 
 	// 构造发送给接收者的消息
 	receiverMsg := &Message{
@@ -128,21 +114,7 @@ func (c *Client) handleChatMessage(data json.RawMessage) {
 	// 尝试发送给接收者
 	if c.Hub.SendToUser(chatMsg.ToUserId, receiverMsg) {
 		// 接收者在线，发送已送达确认给发送者
-		deliveredAck := &Message{
-			Type: "ack",
-			Data: mustMarshal(&AckMessage{
-				MsgId:     chatMsg.MsgId,
-				Status:    "delivered",
-				Timestamp: time.Now().Unix(),
-			}),
-		}
-
-		select {
-		case c.send <- deliveredAck:
-			logx.Infof("[Client] Sent ACK (delivered) to user %d for message %s", c.UserId, chatMsg.MsgId)
-		default:
-			logx.Errorf("[Client] Failed to send delivered ACK to user %d: send buffer full", c.UserId)
-		}
+		c.sendAck(chatMsg.MsgId, "delivered", "", time.Now().Unix())
 	} else {
 		logx.Infof("[Client] User %d is offline, message %s stored for later delivery", chatMsg.ToUserId, chatMsg.MsgId)
 	}
@@ -222,21 +194,7 @@ func (c *Client) handleGroupChatMessage(data json.RawMessage) {
 	groupMsg.Seq = resp.Seq
 
 	// 发送 ACK 给发送者
-	ackMsg := &Message{
-		Type: "ack",
-		Data: mustMarshal(&AckMessage{
-			MsgId:     groupMsg.MsgId,
-			Status:    "sent",
-			Timestamp: resp.CreatedAt,
-		}),
-	}
-
-	select {
-	case c.send <- ackMsg:
-		logx.Infof("[Client] Sent ACK (sent) to user %d for group message %s", c.UserId, groupMsg.MsgId)
-	default:
-		logx.Errorf("[Client] Failed to send ACK to user %d: send buffer full", c.UserId)
-	}
+	c.sendAck(groupMsg.MsgId, "sent", "", resp.CreatedAt)
 
 	// 构造发送给群成员的消息
 	groupReceiverMsg := &Message{

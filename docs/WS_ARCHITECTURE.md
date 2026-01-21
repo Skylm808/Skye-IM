@@ -14,7 +14,7 @@ WebSocket 服务是 SkyeIM 的**实时通信核心**，负责维护客户端的�
 | --- | --- | --- |
 | **接入层** | [gorilla/websocket](https://github.com/gorilla/websocket) | Go 社区标准 WebSocket 库 |
 | **框架** | go-zero | 微服务治理、RPC 调用 |
-| **状态/缓存** | Redis | 维护在线用户集合、离线消息队列 |
+| **状态/缓存** | Redis | 维护在线用户集合、群成员缓存 |
 | **通信** | gRPC | 调用 Message/Group/Friend 服务 |
 
 ### 1.2 目录结构
@@ -27,14 +27,15 @@ app/ws/
 │   ├── config/                   # 配置定义
 │   ├── conn/                     # 连接管理核心
 │   │   ├── client.go             # [搬运工] 单个连接读写、心跳
+│   │   ├── client_message.go     # [业务员] 消息业务逻辑 (Chat, Group, Ack)
 │   │   ├── hub.go                # [调度中心] 连接池管理、消息路由核心
 │   │   └── types.go              # 消息类型定义
 │   ├── handler/                  # HTTP 处理器
-│   │   ├── ws_handler.go         # [门卫] WebSocket 升级、鉴权
-│   │   └── push_event_handler.go # 内部事件推送接口
+│   │   ├── wshandler.go          # [门卫] WebSocket 升级、鉴权、离线消息推送
+│   │   └── pushhandler.go        # [内部接口] 处理来自 RPC 的推送请求
 │   └── svc/                      # 服务上下文
 │       └── service_context.go    # RPC/Redis 客户端
-└── ws.go                          # 主入口
+└── ws.go                         # 主入口
 ```
 
 ---
@@ -47,9 +48,10 @@ app/ws/
 
 | 组件 | 对应文件 | 角色 | 核心职责 | 比喻 |
 | :--- | :--- | :--- | :--- | :--- |
-| **Handler** | `ws_handler.go` | **安检/门卫** | 1. 处理 WebSocket 握手 (Upgrade)<br>2. 校验 JWT Token<br>3. 初始化 Client 并注册到 Hub | 酒店前台 |
-| **Hub** | `hub.go` | **调度塔台** | 1. 维护全量在线连接映射 (`map[int64]*Client`)<br>2. **路由决策**：决定消息发给谁<br>3. **广播**：管理群聊消息分发 | 交通指挥台 |
-| **Client** | `client.go` | **专属摆渡车** | 1. 维护 TCP 连接生命周期<br>2. **ReadPump**: 专职从网线收信<br>3. **WritePump**: 专职向网线发信 + 维护心跳 | 专属快递员 |
+| **WsHandler** | `handler/wshandler.go` | **安检/门卫** | 1. 处理 WebSocket 握手 (Upgrade)<br>2. 校验 JWT Token<br>3. 初始化 Client 并注册到 Hub<br>4. **主动推送离线消息** (私聊+群聊) | 酒店前台 |
+| **PushHandler** | `handler/pushhandler.go` | **内部信使** | 1. 接收内部 RPC 服务 (Friend/Group/Message) 的推送请求<br>2. 校验内部调用凭证 `X-Skyeim-Push-Secret` | 内部对讲机 |
+| **Hub** | `conn/hub.go` | **调度塔台** | 1. 维护全量在线连接映射 (`map[int64]*Client`)<br>2. **路由决策**：决定消息发给谁<br>3. **广播**：管理群聊消息分发 (异步) | 交通指挥台 |
+| **Client** | `conn/client.go`<br>`conn/client_message.go` | **专属摆渡车** | 1. 维护 TCP 连接生命周期<br>2. **ReadPump/WritePump**: 负责收发网络包<br>3. **业务逻辑**: 处理 Chat/Ack/Read 等具体消息 | 专属快递员 |
 
 ### 2.2 Hub-Client 核心模型
 
@@ -64,13 +66,15 @@ classDiagram
         +Register(client)
         +SendToUser(uid, msg)
         +SendToGroup(gid, msg)
+        +NotifyGroupEvent(gid, event, data)
     }
     class Client {
         -Hub: *Hub
         -conn: *websocket.Conn
-        -send: chan []byte
+        -send: chan interface{}
         +ReadPump()
         +WritePump()
+        +Close()
     }
     Hub "1" *-- "N" Client : manages
 ```
@@ -98,12 +102,13 @@ type Hub struct {
 
 ```mermaid
 graph LR
-    A[发送者 ReadPump] -->|1. 收到消息| B(Hub.SendToUser)
-    B -->|2. RLock 查表| C{目标在线?}
-    C -->|Yes| D[直接写入目标 Channel]
-    C -->|No| E[存离线队列(Redis)]
-    D -->|3. 唤醒| F[目标 WritePump]
-    F -->|4. 推送| G[接收者客户端]
+    A[RPC/API] -->|HTTP Push| B(PushHandler)
+    B -->|调用| C(Hub.SendToUser)
+    C -->|RLock 查表| D{目标在线?}
+    D -->|Yes| E[直接写入 Client.send Channel]
+    D -->|No| F[记录日志/忽略 (消息已存DB)]
+    E -->|唤醒| G[Client WritePump]
+    G -->|WebSocket| H[接收者客户端]
 ```
 
 **代码实现 (`hub.go`)**:
@@ -119,8 +124,8 @@ func (h *Hub) SendToUser(userId int64, msg *Message) bool {
         case client.send <- msg:
             return true
         default:
-            close(client.send) // 缓冲区满，视为异常断开
-            delete(h.clients, userId)
+            // 缓冲区满，视为异常断开或网络拥塞
+            logx.Errorf("Send buffer full for user %d", userId)
         }
     }
     return false
@@ -134,7 +139,7 @@ func (h *Hub) SendToUser(userId int64, msg *Message) bool {
 1.  **投递**：`hub.SendToGroup()` 仅将消息放入 `h.groupMessage` 缓冲通道，**立即返回**。
 2.  **调度**：Hub 主循环取出消息，启动临时协程 `go h.routeGroupMessage()`。
 3.  **分发 (临时协程)**：
-    *   **查成员**：优先查 Redis 缓存 (`im:group:members:{gid}`)，未命中则同步 RPC。
+    *   **查成员**：优先查 Redis 缓存 (`im:group:members:{gid}`)，未命中则同步调用 `Group RPC`。
     *   **遍历**：获取所有成员 ID。
     *   **路由**：循环调用 `SendToUser` (复用私聊逻辑) 分发给在线成员。
 
@@ -145,54 +150,64 @@ func (h *Hub) SendToUser(userId int64, msg *Message) bool {
 
 ## 四、 详细业务流程图解
 
-### 4.1 连接建立与握手
+### 4.1 连接建立与离线消息推送
+
+```mermaid
+sequenceDiagram
+    participant C as Client
+    participant H as WsHandler
+    participant Hub as Hub
+    participant R as Redis/RPC
+    
+    C->>H: GET /ws?token=eyJ...
+    H->>H: Parse & Validate Token (JWT)
+    alt Invalid Token
+        H-->>C: 401 Unauthorized
+    else Valid Token
+        H-->>C: 101 Switching Protocols
+        H->>Hub: Register(Client)
+        Hub->>Hub: Update clients map
+        Hub->>C: Push "connected" event
+        
+        par Offline Private Messages
+            H->>R: FriendRpc.GetFriendList
+            H->>R: MessageRpc.GetUnreadMessages (Loop)
+            H->>C: Push Summary (Total/PushCount)
+            loop Top 20 Messages
+                H->>C: Push Private Message
+            end
+        and Offline Group Messages
+            H->>R: GroupRpc.GetJoinedGroups
+            H->>R: MessageRpc.GetGroupMessagesBySeq (Loop)
+            H->>C: Push Summary
+            loop Top 20 Group Messages
+                H->>C: Push Group Message (Check @mention)
+            end
+        end
+    end
+```
+
+### 4.2 消息发送全链路 (以私聊为例)
+
+**注意**: WS 服务仅负责**推送**。消息的**发送/持久化**需客户端调用 HTTP API (`Message 服务`)。
 
 ```text
-客户端请求 GET /ws?token=eyJ...
+客户端 A (HTTP POST /message/send)
     ↓
-[ws_handler.go] 校验 JWT Token
-    ├─ 无效 → 401 Unauthorized
-    └─ 有效 ↓
-HTTP 升级为 WebSocket (101 Switching Protocols)
-    ↓
-创建 Client 实例
-    ↓
-[hub.go] 注册 (h.register <- client)
-    ↓
-1. 踢掉旧连接 (互斥登录)
-2. 写入 clients 表
-3. 广播"好友上线"通知
-4. 启动 ReadPump / WritePump
-    ↓
-[push_event.go] 推送离线消息
-    ↓
-从 Redis `offline:private:{uid}` 拉取前 20 条
+Message 服务 (API/RPC)
+    ├─ 1. 鉴权与风控
+    ├─ 2. 存储 MySQL (im_message)
+    ├─ 3. 写入 Redis 离线队列 (可选)
+    └─ 4. 调用 WS 服务 (HTTP POST /ws/push) <--- 触发推送
+            ↓
+    [ws/internal/handler/pushhandler.go]
+            ↓
+    [ws/internal/conn/hub.go] SendToUser
+            ↓
+    [ws/internal/conn/client.go] WritePump
+            ↓
+    客户端 B (WebSocket Receive)
 ```
-
-### 4.2 消息发送全链路
-
-**客户端发送 Payload**:
-```json
-{
-    "type": "chat",
-    "data": {
-        "toUserId": 1002,
-        "content": "Hello",
-        "contentType": 1
-    }
-}
-```
-
-**服务端处理链路**:
-1.  **ReadPump**: 反序列化 JSON。
-2.  **Handler**: 识别 `type=chat`，调用业务逻辑。
-3.  **RPC**: 调用 `Message RPC`：
-    *   验证好友关系。
-    *   生成全局唯一 `msgId`。
-    *   写入 MySQL `im_message` 表。
-    *   返回完整消息对象（含 `createAt`）。
-4.  **Ack**: 立即通过 WritePump 回复发送者 `ack` 消息。
-5.  **Push**: 调用 `Hub.SendToUser` 推送给接收者。
 
 ---
 
@@ -202,10 +217,8 @@ HTTP 升级为 WebSocket (101 Switching Protocols)
 
 | Key | 类型 | 示例 | 作用 |
 | :--- | :--- | :--- | :--- |
-| `online:users` | Set | `{1001, 1002}` | 全服在线用户集合 (用于统计和广播) |
-| `group:online:{gid}` | Set | `{1001, 1002}` | 某群的在线成员集合 |
-| `im:group:members:{gid}` | Set | `{1001, 1002, 1003}` | 群成员列表缓存 (TTL 7天, 群成员变动时删除) |
-| `offline:private:{uid}` | List | `[{msg...}, ...]` | 私聊离线消息队列 (LPUSH/LPOP) |
+| `im:group:members:{gid}` | Set | `{1001, 1002, 1003}` | 群成员列表缓存 (TTL 7天)。<br>未命中时调用 GroupRPC 加载并写入。 |
+| (RPC内部使用) | - | - | WS 服务本身不直接读写复杂的业务 Redis Key，而是依赖 Message/Group RPC 封装。 |
 
 ### 5.2 心跳保活机制 (Heartbeat)
 
@@ -217,16 +230,19 @@ HTTP 升级为 WebSocket (101 Switching Protocols)
     *   每当收到 Pong 帧，重置超时时间。
     *   **死锁判定**: 如果 60 秒内既没收到消息也没收到 Pong，判定为**网络僵死**，断开连接。
 
-### 5.3 离线消息策略
+### 5.3 离线消息策略 (优化版)
 
-*   **私聊 (Websocket 推送)**: 
-    *   用户不在线时，消息存入 Redis List。
-    *   用户上线建立连接时，主动推送前 20 条。
-    *   客户端收到后，如有更多需求，通过 HTTP 拉取历史。
-*   **群聊 (HTTP 拉取)**: 
-    *   **不通过 WebSocket 推送离线群消息**（避免群消息风暴炸掉刚连上的客户端）。
-    *   客户端本地维护每个群的 `read_seq`。
-    *   连接建立后，客户端主动调用 `GET /message/group/sync`，传入本地 seq，服务端返回 ` > seq` 的消息增量。
+为了防止海量离线消息阻塞连接或导致“消息风暴”：
+
+1.  **限制条数**: 
+    *   无论是私聊还是群聊，连接建立时**最多只推送最近 20 条**未读消息。
+2.  **推送摘要**:
+    *   在推送具体消息前，先推送一条 `offline_messages` 类型的摘要消息，包含 `totalCount` (总未读数) 和 `pushCount` (本次推送数)。
+3.  **客户端处理**:
+    *   客户端收到摘要后，知道还有更多历史消息，可根据需要（如用户上滑）调用 HTTP 接口分页拉取剩余历史记录。
+4.  **群聊特权**:
+    *   群聊离线消息计算时，会过滤掉用户加群之前的历史消息 (`msg.CreatedAt >= user.JoinedAt`)。
+    *   会特别标记 `@我` 的消息。
 
 ---
 
@@ -247,14 +263,12 @@ A:
 ### Q3: 如何支持多实例部署 (Cluster)？
 A: 当前架构支持水平扩展，方案如下：
 1.  **用户分片**: 客户端连接请求经过 Nginx 负载均衡到不同 WS 节点。
-2.  **Redis Pub/Sub**: 
+2.  **Redis Pub/Sub** (规划中): 
     *   当 Server A 收到需要发给 User B 的消息，但 User B 连在 Server B 上。
     *   Server A 发现本地 map 没在这个人，则 Publish 消息到 Redis `ws:broadcast` 频道。
     *   所有 WS 节点订阅该频道，Server B 收到后发现 User B 在自己这，执行推送。
-*(注: 当前代码已预留 Pub/Sub 接口，待后续版本实装)*
 
 ---
 
 **文档维护**: Skylm
-**最后更新**: 2026-01-18
-
+**最后更新**: 2026-01-20

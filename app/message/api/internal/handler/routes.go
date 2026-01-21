@@ -40,12 +40,6 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 				Handler: message.MarkGroupReadHandler(serverCtx),
 			},
 			{
-				// 发送群聊消息（可选：主要走WS）
-				Method:  http.MethodPost,
-				Path:    "/group/send",
-				Handler: message.SendGroupMessageHandler(serverCtx),
-			},
-			{
 				// 群聊离线同步（按seq拉取）
 				Method:  http.MethodGet,
 				Path:    "/group/sync",
@@ -74,12 +68,6 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 				Method:  http.MethodGet,
 				Path:    "/search",
 				Handler: message.SearchMessageHandler(serverCtx),
-			},
-			{
-				// 发送私聊消息（可选：主要走WS）
-				Method:  http.MethodPost,
-				Path:    "/send",
-				Handler: message.SendMessageHandler(serverCtx),
 			},
 			{
 				// 获取未读消息数（私聊）

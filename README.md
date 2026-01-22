@@ -119,156 +119,57 @@ github.com/minio/minio-go/v7     // MinIO SDK
 
 ---
 
-## 🐳 方式二：Docker 部署（推荐）
-
-### 一键启动所有服务
-
-Docker 部署会自动启动所有必需的服务，包括基础设施和应用服务，无需手动配置。
-
-```bash
-# 克隆项目
-git clone https://github.com/Skylm808/SkyeIM.git
-cd SkyeIM
-
-# 🚀 一键启动所有服务（Windows）
-scripts\docker-deploy.bat start
-
-# 🚀 一键启动所有服务（Linux/Mac）
-chmod +x scripts/docker-deploy.sh
-./scripts/docker-deploy.sh start
-
-# 或直接使用 docker-compose
-docker-compose up -d --build
-```
-
-### 查看服务状态
-
-```bash
-# Windows
-scripts\docker-deploy.bat status
-
-# Linux/Mac
-./scripts/docker-deploy.sh status
-
-# 或使用健康检查脚本
-./scripts/health-check.sh  # Linux/Mac
-scripts\health-check.bat   # Windows
-```
-
-### 访问服务
-
-- **API 网关**: http://localhost:8080
-- **MinIO 控制台**: http://localhost:9001
-  - 用户名: `minioadmin`
-  - 密码: `minioadmin`
-
-### 查看日志
-
-```bash
-# 查看所有服务日志
-docker-compose logs -f
-
-# 查看特定服务日志
-docker-compose logs -f gateway
-docker-compose logs -f user-rpc
-```
-
-### 停止服务
-
-```bash
-# Windows
-scripts\docker-deploy.bat stop
-
-# Linux/Mac
-./scripts/docker-deploy.sh stop
-
-# 或使用 docker-compose
-docker-compose down
-```
-
-### Docker 部署优势
-
-✅ **开箱即用**：无需手动安装配置 MySQL、Redis、etcd、MinIO  
-✅ **环境隔离**：所有服务运行在独立容器中，互不干扰  
-✅ **一键启停**：支持快速启动、停止、重启所有服务  
-✅ **完整微服务**：所有 API 和 RPC 服务全部容器化  
-✅ **服务健康检查**：自动检测服务状态，依赖服务就绪后再启动  
-✅ **生产就绪**：可直接用于生产环境部署
-
-> [!NOTE]
-> **详细的 Docker 部署文档**：查看 [DOCKER_DEPLOYMENT.md](./DOCKER_DEPLOYMENT.md) 了解更多配置选项和故障排查。
-
----
-
-## 💻 方式一：本地开发部署
-
----
-
 ## 🐳 Docker 部署（推荐）
 
-### 一键启动所有服务
+### 快速启动
 
-Docker 部署会自动启动所有必需的服务，包括基础设施和应用服务，无需手动配置。
+Docker 部署会自动启动所有必需的服务，包括基础设施（MySQL、Redis、etcd、MinIO）和应用服务（所有 API、RPC、WebSocket、Gateway），无需手动配置。
 
 ```bash
 # 克隆项目
 git clone https://github.com/Skylm808/SkyeIM.git
 cd SkyeIM
 
-# 🚀 一键启动所有服务（Windows）
-scripts\docker-deploy.bat start
-
-# 🚀 一键启动所有服务（Linux/Mac）
-chmod +x scripts/docker-deploy.sh
-./scripts/docker-deploy.sh start
-
-# 或直接使用 docker-compose
+# 🚀 启动所有服务（首次启动会自动构建镜像）
 docker-compose up -d --build
-```
 
-### 查看服务状态
+# 查看服务状态
+docker-compose ps
 
-```bash
-# Windows
-scripts\docker-deploy.bat status
-
-# Linux/Mac
-./scripts/docker-deploy.sh status
-
-# 或使用健康检查脚本
-./scripts/health-check.sh  # Linux/Mac
-scripts\health-check.bat   # Windows
-```
-
-### 访问服务
-
-- **API 网关**: http://localhost:8080
-- **MinIO 控制台**: http://localhost:9001
-  - 用户名: `minioadmin`
-  - 密码: `minioadmin`
-
-### 查看日志
-
-```bash
 # 查看所有服务日志
 docker-compose logs -f
 
 # 查看特定服务日志
 docker-compose logs -f gateway
 docker-compose logs -f user-rpc
+docker-compose logs -f ws-server
 ```
 
-### 停止服务
+### 访问服务
+
+- **API 网关**: http://localhost:8080
+- **WebSocket**: ws://localhost:10300
+- **MinIO 控制台**: http://localhost:9001
+  - 用户名: `minioadmin`
+  - 密码: `minioadmin`
+
+### 常用命令
 
 ```bash
-# Windows
-scripts\docker-deploy.bat stop
-
-# Linux/Mac
-./scripts/docker-deploy.sh stop
-
-# 或使用 docker-compose
+# 停止所有服务
 docker-compose down
+
+# 停止并删除数据卷（谨慎使用，会清空数据库）
+docker-compose down -v
+
+# 重启所有服务
+docker-compose restart
+
+# 重启特定服务
+docker-compose restart gateway user-api
+
+# 查看服务资源占用
+docker stats
 ```
 
 ### Docker 部署优势
@@ -282,6 +183,12 @@ docker-compose down
 
 > [!NOTE]
 > **详细的 Docker 部署文档**：查看 [DOCKER_DEPLOYMENT.md](./DOCKER_DEPLOYMENT.md) 了解更多配置选项和故障排查。
+
+> [!TIP]
+> **首次使用建议**：
+> 1. 启动后等待 1-2 分钟，让所有服务完成初始化
+> 2. 访问前端应用时，清除浏览器缓存（localStorage）以避免旧数据冲突
+> 3. 使用 `docker-compose ps` 确认所有服务状态为 `Up`
 
 ---
 
@@ -451,6 +358,37 @@ cd app/message/rpc && go run message.go
 # Group RPC (端口 9400)
 cd app/group/rpc && go run group.go
 ```
+
+#### 方式三：使用 VSCode 任务启动（推荐）
+
+项目已配置好 VSCode 任务，可以一键启动所有服务。
+
+**单个服务启动**：
+1. 按 `Ctrl+Shift+P` (Mac: `Cmd+Shift+P`)
+2. 输入 `Tasks: Run Task`
+3. 选择要启动的服务：
+   - `Run Auth API` - 认证服务
+   - `Run User API` / `Run User RPC` - 用户服务
+   - `Run Friend API` / `Run Friend RPC` - 好友服务
+   - `Run Message API` / `Run Message RPC` - 消息服务
+   - `Run Group API` / `Run Group RPC` - 群组服务
+   - `Run Upload API` - 上传服务
+   - `Run Gateway` - 网关
+   - `Run WebSocket` - WebSocket 服务
+
+**一键启动所有服务**：
+1. 按 `Ctrl+Shift+P` (Mac: `Cmd+Shift+P`)
+2. 输入 `Tasks: Run Task`
+3. 选择 `🚀 Start All Services`
+
+这会自动启动所有 RPC、API、Gateway 和 WebSocket 服务，每个服务在独立的终端窗口运行。
+
+**其他组合任务**：
+- `Start All RPC Services` - 启动所有 RPC 服务
+- `Start All API Services` - 启动所有 API 服务
+
+> [!TIP]
+> VSCode 任务配置文件位于 `.vscode/tasks.json`，可根据需要自定义。
 
 ### 验证服务
 

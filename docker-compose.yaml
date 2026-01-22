@@ -6,14 +6,17 @@ services:
     ports:
       - "2379:2379"
       - "2380:2380"
+    volumes:
+      # 数据持久化
+      - etcd-data:/etcd-data
     networks:
       - skyeim-network
     command:
       - /usr/local/bin/etcd
       - --data-dir=/etcd-data
       - --name=node1
-      - --listen-client-urls=http://0.0.0.0:2379    #监听地址
-      - --advertise-client-urls=http://etcd:2379  #对外暴露地址
+      - --listen-client-urls=http://0.0.0.0:2379
+      - --advertise-client-urls=http://etcd:2379
       - --listen-peer-urls=http://0.0.0.0:2380
       - --initial-advertise-peer-urls=http://etcd:2380
       - --initial-cluster=node1=http://etcd:2380
@@ -31,6 +34,9 @@ services:
     ports:
       - "16379:6379"
     command: redis-server --port 6379
+    volumes:
+      # 数据持久化
+      - redis-data:/data
     networks:
       - skyeim-network
     healthcheck:
@@ -51,8 +57,9 @@ services:
       MYSQL_CHARACTER_SET_SERVER: utf8mb4
       MYSQL_COLLATION_SERVER: utf8mb4_unicode_ci
     volumes:
-      # 如果你有 SQL 初始化脚本，可以放在这里
-      # - ./sql:/docker-entrypoint-initdb.d
+      # 数据持久化
+      - mysql-data:/var/lib/mysql
+      # SQL 初始化脚本
       - ./init_database.sql:/docker-entrypoint-initdb.d/init_database.sql
     networks:
       - skyeim-network
@@ -354,5 +361,7 @@ networks:
     driver: bridge
 
 volumes:
-  mysql-data:
-  minio-data:
+  mysql-data:      # MySQL 数据持久化
+  redis-data:      # Redis 数据持久化
+  etcd-data:       # etcd 数据持久化
+  minio-data:      # MinIO 对象存储数据持久化

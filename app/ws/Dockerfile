@@ -22,4 +22,5 @@ COPY --from=builder /app/app/ws/etc ./etc
 
 EXPOSE 10300
 
-CMD ["./ws", "-f", "etc/ws.yaml"]
+CMD ["./ws", "-f", "etc/ws-docker.yaml"]
+

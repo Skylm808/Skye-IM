@@ -9,7 +9,8 @@ type Config struct {
 		AccessExpire int64
 	}
 	MinIO struct {
-		Endpoint        string
+		Endpoint        string // MinIO内部访问地址（容器间通信）
+		PublicEndpoint  string // MinIO公共访问地址（前端访问）
 		AccessKeyID     string
 		SecretAccessKey string
 		UseSSL          bool

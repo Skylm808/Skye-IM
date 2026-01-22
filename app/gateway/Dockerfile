@@ -22,4 +22,5 @@ COPY --from=builder /app/app/gateway/etc ./etc
 
 EXPOSE 8080
 
-CMD ["./gateway", "-f", "etc/gateway.yaml"]
+CMD ["./gateway", "-f", "etc/gateway-docker.yaml"]
+

@@ -7,7 +7,7 @@ RUN go mod download
 
 COPY . .
 
-WORKDIR /app/app/group/api
+WORKDIR /app/app/group/rpc
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o group group.go
 
 FROM alpine:latest
@@ -17,10 +17,10 @@ ENV TZ=Asia/Shanghai
 
 WORKDIR /app
 
-COPY --from=builder /app/app/group/api/group .
-COPY --from=builder /app/app/group/api/etc ./etc
+COPY --from=builder /app/app/group/rpc/group .
+COPY --from=builder /app/app/group/rpc/etc ./etc
 
-EXPOSE 10500
+EXPOSE 9400
 
-CMD ["./group", "-f", "etc/group-api-docker.yaml"]
+CMD ["./group", "-f", "etc/group-docker.yaml"]
 

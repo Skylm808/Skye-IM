@@ -1,0 +1,19 @@
+Name: friend.rpc
+ListenOn: 0.0.0.0:9200
+Mode: dev
+
+MySQL:
+  DataSource: root:630630@tcp(mysql:3306)/im_auth?charset=utf8mb4&parseTime=true&loc=Local
+
+Cache:
+  - Host: redis:6379
+    Type: node
+    Pass: 
+
+Etcd:
+  Hosts:
+    - etcd:2379
+  Key: friend.rpc
+
+WsServiceUrl: http://ws-server:10300
+WsPushSecret: "skyim-push-secret666"

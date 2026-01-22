@@ -22,4 +22,5 @@ COPY --from=builder /app/app/upload/api/etc ./etc
 
 EXPOSE 10600
 
-CMD ["./upload", "-f", "etc/upload-api.yaml"]
+CMD ["./upload", "-f", "etc/upload-api-docker.yaml"]
+

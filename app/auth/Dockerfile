@@ -1,10 +1,10 @@
-# 多阶段构建：先编译，再运行
+# 多阶段构建：先编译，再运�?
 FROM golang:1.25-alpine AS builder
 
 # 设置工作目录
 WORKDIR /app
 
-# 复制 go.mod 和 go.sum
+# 复制 go.mod �?go.sum
 COPY go.mod go.sum ./
 
 # 下载依赖
@@ -23,7 +23,7 @@ FROM alpine:latest
 # 安装 ca-certificates（HTTPS 需要）
 RUN apk --no-cache add ca-certificates tzdata
 
-# 设置时区为上海
+# 设置时区为上�?
 ENV TZ=Asia/Shanghai
 
 WORKDIR /app
@@ -36,4 +36,5 @@ COPY --from=builder /app/app/auth/etc ./etc
 EXPOSE 10001
 
 # 运行服务
-CMD ["./auth", "-f", "etc/auth-api.yaml"]
+CMD ["./auth", "-f", "etc/auth-api-docker.yaml"]
+

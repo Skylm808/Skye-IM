@@ -59,10 +59,23 @@ func (l *QuitGroupLogic) QuitGroup(in *group.QuitGroupReq) (*group.QuitGroupResp
 	groupInfo.MemberCount--
 	_ = l.svcCtx.ImGroupModel.Update(l.ctx, groupInfo)
 
-	// 6. 更新 Redis
+	// 6. 更新 Redis 缓存
 	go func() {
+		// 6.1 删除手动管理的成员列表缓存
 		redisKey := fmt.Sprintf("im:group:members:%s", in.GroupId)
 		_, _ = l.svcCtx.Redis.Srem(redisKey, in.UserId)
+
+		// 6.2 删除群成员 Model 缓存（go-zero 自动生成）
+		// 注意：Delete 已经自动删除了，但为了确保完全清理，这里再次删除
+		memberCacheKey := fmt.Sprintf("cache:imGroupMember:groupId:userId:%s:%d", in.GroupId, in.UserId)
+		memberIdKey := fmt.Sprintf("cache:imGroupMember:id:%d", member.Id)
+		_, _ = l.svcCtx.Redis.Del(memberCacheKey)
+		_, _ = l.svcCtx.Redis.Del(memberIdKey)
+
+		// 6.3 更新群组信息缓存（因为 MemberCount 变了）
+		// Update 操作会自动删除群组缓存，下次查询时自动回填
+
+		l.Logger.Infof("[QuitGroup] Cleared cache for user %d in group %s", in.UserId, in.GroupId)
 	}()
 
 	// 7. 推送通知

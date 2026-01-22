@@ -206,15 +206,24 @@ func (g *Gateway) extractServiceName(path string) string {
 // getServiceAddr 从配置或etcd获取服务地址
 func (g *Gateway) getServiceAddr(serviceName string) (string, error) {
 	// ========== 静态配置的API服务地址（优先）==========
+	// Docker环境使用容器名，本地开发使用127.0.0.1
 	staticServices := map[string]string{
-		"auth-api":    "127.0.0.1:10001",
-		"user-api":    "127.0.0.1:10100",
-		"friend-api":  "127.0.0.1:10200",
-		"message-api": "127.0.0.1:10400",
-		"group-api":   "127.0.0.1:10500",
-		"upload-api":  "127.0.0.1:10600",
+		"auth-api":    "skyeim-auth-api:10001",
+		"user-api":    "skyeim-user-api:10100",
+		"friend-api":  "skyeim-friend-api:10200",
+		"message-api": "skyeim-message-api:10400",
+		"group-api":   "skyeim-group-api:10500",
+		"upload-api":  "skyeim-upload-api:10600",
 	}
-
+	// 本地开发使用127.0.0.1
+	// staticServices := map[string]string{
+	// 	"auth-api":    "127.0.0.1:10001",
+	// 	"user-api":    "127.0.0.1:10100",
+	// 	"friend-api":  "127.0.0.1:10200",
+	// 	"message-api": "127.0.0.1:10400",
+	// 	"group-api":   "127.0.0.1:10500",
+	// 	"upload-api":  "127.0.0.1:10600",
+	// }
 	// 先查静态配置
 	if addr, ok := staticServices[serviceName]; ok {
 		logx.Infof("使用静态配置: %s -> %s", serviceName, addr)

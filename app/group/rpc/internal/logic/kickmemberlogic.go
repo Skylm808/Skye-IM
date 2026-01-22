@@ -58,10 +58,21 @@ func (l *KickMemberLogic) KickMember(in *group.KickMemberReq) (*group.KickMember
 	groupInfo.MemberCount--
 	_ = l.svcCtx.ImGroupModel.Update(l.ctx, groupInfo)
 
-	// 6. 更新 Redis
+	// 6．更新 Redis 缓存
 	go func() {
+		// 6.1 删除手动管理的成员列表缓存
 		redisKey := fmt.Sprintf("im:group:members:%s", in.GroupId)
 		_, _ = l.svcCtx.Redis.Srem(redisKey, in.MemberId)
+
+		// 6.2 删除群成员 Model 缓存（go-zero 自动生成）
+		// 注意：DeleteByGroupIdUserId 已经自动删除了，但为了确保完全清理，这里再次删除
+		memberCacheKey := fmt.Sprintf("cache:imGroupMember:groupId:userId:%s:%d", in.GroupId, in.MemberId)
+		_, _ = l.svcCtx.Redis.Del(memberCacheKey)
+
+		// 6.3 更新群组信息缓存（因为 MemberCount 变了）
+		// Update 操作会自动删除群组缓存，下次查询时自动回填
+
+		l.Logger.Infof("[KickMember] Cleared cache for member %d in group %s", in.MemberId, in.GroupId)
 	}()
 
 	// 7. 推送通知

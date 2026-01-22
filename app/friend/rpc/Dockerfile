@@ -7,7 +7,7 @@ RUN go mod download
 
 COPY . .
 
-WORKDIR /app/app/friend/api
+WORKDIR /app/app/friend/rpc
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o friend friend.go
 
 FROM alpine:latest
@@ -17,10 +17,10 @@ ENV TZ=Asia/Shanghai
 
 WORKDIR /app
 
-COPY --from=builder /app/app/friend/api/friend .
-COPY --from=builder /app/app/friend/api/etc ./etc
+COPY --from=builder /app/app/friend/rpc/friend .
+COPY --from=builder /app/app/friend/rpc/etc ./etc
 
-EXPOSE 10200
+EXPOSE 9200
 
-CMD ["./friend", "-f", "etc/friend-api-docker.yaml"]
+CMD ["./friend", "-f", "etc/friend-docker.yaml"]
 

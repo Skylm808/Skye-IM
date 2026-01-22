@@ -1,0 +1,52 @@
+Name: ws-server
+Host: 0.0.0.0
+Port: 10300
+Mode: dev
+
+# JWT 配置（与 Auth 服务保持一致）
+Auth:
+  AccessSecret: "Skylm-im-secret-key"
+  AccessExpire: 604800  # 7天（秒）
+
+# Message RPC 服务配置
+MessageRpc:
+  Etcd:
+    Hosts:
+      - etcd:2379
+    Key: message.rpc
+
+# Friend RPC 服务配置（验证好友关系）
+FriendRpc:
+  Etcd:
+    Hosts:
+      - etcd:2379
+    Key: friend.rpc
+
+# Group RPC 服务配置
+GroupRpc:
+  Etcd:
+    Hosts:
+      - etcd:2379
+    Key: group.rpc
+
+# WebSocket 配置
+WebSocket:
+  PingInterval: 30      # 心跳间隔（秒）
+  PongTimeout: 60       # pong 超时（秒）
+  MaxMessageSize: 65536 # 最大消息大小（字节）
+
+# Redis 配置
+Redis:
+  Host: redis:6379
+  Type: node
+  Pass: ""
+
+# 内部推送接口鉴权（可选；设置后 group-rpc 调用需携带相同 Secret）
+PushEvent:
+  Secret: "skyim-push-secret666"
+
+# 日志配置
+Log:
+  ServiceName: ws-server
+  Mode: console
+  Level: info

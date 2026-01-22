@@ -67,8 +67,12 @@ func (l *UploadAvatarLogic) UploadAvatar(file *multipart.FileHeader) (resp *type
 		return nil, fmt.Errorf("上传失败: %w", err)
 	}
 
-	// 6. 生成URL
-	url := fmt.Sprintf("http://%s/%s/%s", l.svcCtx.Config.MinIO.Endpoint, bucketName, objectName)
+	// 6. 生成URL（使用PublicEndpoint让前端可访问）
+	publicEndpoint := l.svcCtx.Config.MinIO.PublicEndpoint
+	if publicEndpoint == "" {
+		publicEndpoint = l.svcCtx.Config.MinIO.Endpoint // 降级方案
+	}
+	url := fmt.Sprintf("http://%s/%s/%s", publicEndpoint, bucketName, objectName)
 
 	// TODO: 生成缩略图（可选）
 	thumbnail := url

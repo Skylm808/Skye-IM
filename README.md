@@ -104,11 +104,188 @@ github.com/minio/minio-go/v7     // MinIO SDK
 
 ### 前置要求
 
+#### 方式一：本地开发环境
 - Go 1.25.4+
 - MySQL 8.0+
 - Redis 6.0+ (默认端口 16379)
 - etcd 3.5+
 - MinIO (可选，用于文件存储，默认端口 9000)
+
+#### 方式二：Docker 环境
+- Docker 20.10+
+- Docker Compose 2.0+
+- 至少 4GB 可用内存
+- 至少 10GB 可用磁盘空间
+
+---
+
+## 🐳 方式二：Docker 部署（推荐）
+
+### 一键启动所有服务
+
+Docker 部署会自动启动所有必需的服务，包括基础设施和应用服务，无需手动配置。
+
+```bash
+# 克隆项目
+git clone https://github.com/Skylm808/SkyeIM.git
+cd SkyeIM
+
+# 🚀 一键启动所有服务（Windows）
+scripts\docker-deploy.bat start
+
+# 🚀 一键启动所有服务（Linux/Mac）
+chmod +x scripts/docker-deploy.sh
+./scripts/docker-deploy.sh start
+
+# 或直接使用 docker-compose
+docker-compose up -d --build
+```
+
+### 查看服务状态
+
+```bash
+# Windows
+scripts\docker-deploy.bat status
+
+# Linux/Mac
+./scripts/docker-deploy.sh status
+
+# 或使用健康检查脚本
+./scripts/health-check.sh  # Linux/Mac
+scripts\health-check.bat   # Windows
+```
+
+### 访问服务
+
+- **API 网关**: http://localhost:8080
+- **MinIO 控制台**: http://localhost:9001
+  - 用户名: `minioadmin`
+  - 密码: `minioadmin`
+
+### 查看日志
+
+```bash
+# 查看所有服务日志
+docker-compose logs -f
+
+# 查看特定服务日志
+docker-compose logs -f gateway
+docker-compose logs -f user-rpc
+```
+
+### 停止服务
+
+```bash
+# Windows
+scripts\docker-deploy.bat stop
+
+# Linux/Mac
+./scripts/docker-deploy.sh stop
+
+# 或使用 docker-compose
+docker-compose down
+```
+
+### Docker 部署优势
+
+✅ **开箱即用**：无需手动安装配置 MySQL、Redis、etcd、MinIO  
+✅ **环境隔离**：所有服务运行在独立容器中，互不干扰  
+✅ **一键启停**：支持快速启动、停止、重启所有服务  
+✅ **完整微服务**：所有 API 和 RPC 服务全部容器化  
+✅ **服务健康检查**：自动检测服务状态，依赖服务就绪后再启动  
+✅ **生产就绪**：可直接用于生产环境部署
+
+> [!NOTE]
+> **详细的 Docker 部署文档**：查看 [DOCKER_DEPLOYMENT.md](./DOCKER_DEPLOYMENT.md) 了解更多配置选项和故障排查。
+
+---
+
+## 💻 方式一：本地开发部署
+
+---
+
+## 🐳 Docker 部署（推荐）
+
+### 一键启动所有服务
+
+Docker 部署会自动启动所有必需的服务，包括基础设施和应用服务，无需手动配置。
+
+```bash
+# 克隆项目
+git clone https://github.com/Skylm808/SkyeIM.git
+cd SkyeIM
+
+# 🚀 一键启动所有服务（Windows）
+scripts\docker-deploy.bat start
+
+# 🚀 一键启动所有服务（Linux/Mac）
+chmod +x scripts/docker-deploy.sh
+./scripts/docker-deploy.sh start
+
+# 或直接使用 docker-compose
+docker-compose up -d --build
+```
+
+### 查看服务状态
+
+```bash
+# Windows
+scripts\docker-deploy.bat status
+
+# Linux/Mac
+./scripts/docker-deploy.sh status
+
+# 或使用健康检查脚本
+./scripts/health-check.sh  # Linux/Mac
+scripts\health-check.bat   # Windows
+```
+
+### 访问服务
+
+- **API 网关**: http://localhost:8080
+- **MinIO 控制台**: http://localhost:9001
+  - 用户名: `minioadmin`
+  - 密码: `minioadmin`
+
+### 查看日志
+
+```bash
+# 查看所有服务日志
+docker-compose logs -f
+
+# 查看特定服务日志
+docker-compose logs -f gateway
+docker-compose logs -f user-rpc
+```
+
+### 停止服务
+
+```bash
+# Windows
+scripts\docker-deploy.bat stop
+
+# Linux/Mac
+./scripts/docker-deploy.sh stop
+
+# 或使用 docker-compose
+docker-compose down
+```
+
+### Docker 部署优势
+
+✅ **开箱即用**：无需手动安装配置 MySQL、Redis、etcd、MinIO  
+✅ **环境隔离**：所有服务运行在独立容器中，互不干扰  
+✅ **一键启停**：支持快速启动、停止、重启所有服务  
+✅ **完整微服务**：所有 API 和 RPC 服务全部容器化  
+✅ **服务健康检查**：自动检测服务状态，依赖服务就绪后再启动  
+✅ **生产就绪**：可直接用于生产环境部署
+
+> [!NOTE]
+> **详细的 Docker 部署文档**：查看 [DOCKER_DEPLOYMENT.md](./DOCKER_DEPLOYMENT.md) 了解更多配置选项和故障排查。
+
+---
+
+## 💻 本地开发部署
 
 ### 环境准备
 
@@ -623,8 +800,10 @@ go test -bench=. -benchmem
 - [ ] 实现文件断点续传
 - [ ] 添加 Prometheus 监控
 - [ ] 实现分布式链路追踪
-- [ ] Docker 容器化部署
+- [x] ~~Docker 容器化部署~~ ✅ 已完成
 - [ ] Kubernetes 编排
+- [ ] CI/CD 自动化流水线
+- [ ] API 性能优化与压测
 
 ---
 

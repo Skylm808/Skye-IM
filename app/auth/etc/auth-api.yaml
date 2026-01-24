@@ -8,11 +8,18 @@ Etcd:
     - 127.0.0.1:2379
   Key: auth-api
 
-# MySQL 配置
+# User RPC 服务配置
+UserRpc:
+  Etcd:
+    Hosts:
+      - 127.0.0.1:2379
+    Key: user.rpc
+
+# MySQL 配置（临时保留）
 MySQL:
   DataSource: root:630630@tcp(127.0.0.1:3306)/im_auth?charset=utf8mb4&parseTime=True&loc=Local
 
-# Redis 缓存配置（用于Model缓存）
+# Redis 缓存配置（用于Model缓存，临时保留）
 Cache:
   - Host: 127.0.0.1:16379
     Type: node

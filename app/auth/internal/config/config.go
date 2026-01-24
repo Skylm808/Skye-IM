@@ -7,17 +7,21 @@ import (
 	"github.com/zeromicro/go-zero/core/stores/cache"
 	"github.com/zeromicro/go-zero/core/stores/redis"
 	"github.com/zeromicro/go-zero/rest"
+	"github.com/zeromicro/go-zero/zrpc"
 )
 
 type Config struct {
 	rest.RestConf
 
-	// MySQL 配置
+	// User RPC 配置
+	UserRpc zrpc.RpcClientConf
+
+	// MySQL 配置（临时保留，后续可删除）
 	MySQL struct {
 		DataSource string
 	}
 
-	// Redis 缓存配置（用于Model缓存）
+	// Redis 缓存配置（用于Model缓存，临时保留）
 	Cache cache.CacheConf
 
 	// Redis 配置（用于验证码等）

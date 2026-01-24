@@ -9,6 +9,7 @@ import (
 
 	"SkyeIM/app/user/api/internal/svc"
 	"SkyeIM/app/user/api/internal/types"
+	"SkyeIM/app/user/rpc/userClient"
 
 	"github.com/zeromicro/go-zero/core/logx"
 )
@@ -34,24 +35,29 @@ func (l *GlobalSearchLogic) GlobalSearch(req *types.GlobalSearchRequest) (resp *
 		return &types.GlobalSearchResponse{}, nil
 	}
 
-	// 1. 模糊搜索用户
-	users, err := l.svcCtx.UserModel.SearchByKeyword(l.ctx, keyword)
+	// 1. 通过RPC模糊搜索用户
+	userResp, err := l.svcCtx.UserRpc.SearchUsersByKeyword(l.ctx, &userClient.SearchUsersByKeywordRequest{
+		Keyword: keyword,
+	})
 	if err != nil {
-		l.Logger.Errorf("全局搜索用户失败: %v", err)
+		l.Logger.Errorf("RPC全局搜索用户失败: %v", err)
 	}
 
-	// 2. 模糊搜索群组
+	// 2. 模糊搜索群组（暂时保留直接数据库访问）
 	groups, err := l.svcCtx.GroupModel.SearchByKeyword(l.ctx, keyword)
 	if err != nil {
 		l.Logger.Errorf("全局搜索群组失败: %v", err)
 	}
 
-	// 转换结果
+	// 转换用户结果
 	var userList []types.UserInfo
-	for _, u := range users {
-		userList = append(userList, convertToUserInfo(u))
+	if userResp != nil {
+		for _, u := range userResp.Users {
+			userList = append(userList, convertToUserInfo(u))
+		}
 	}
 
+	// 转换群组结果
 	var groupList []types.GroupInfo
 	for _, g := range groups {
 		groupList = append(groupList, types.GroupInfo{

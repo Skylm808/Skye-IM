@@ -7,11 +7,11 @@ import (
 	"context"
 	"encoding/json"
 
+	"SkyeIM/app/user/rpc/userClient"
 	"SkyeIM/common/errorx"
 	"SkyeIM/common/utils"
 	"auth/internal/svc"
 	"auth/internal/types"
-	"auth/model"
 
 	"github.com/zeromicro/go-zero/core/logx"
 )
@@ -56,23 +56,26 @@ func (l *ChangePasswordLogic) ChangePassword(req *types.ChangePasswordRequest) (
 		return nil, errorx.ErrUnauthorized
 	}
 
-	// 3. 查询用户
-	user, err := l.svcCtx.UserModel.FindOne(l.ctx, uint64(userId))
+	// 3. 通过RPC获取用户信息
+	userResp, err := l.svcCtx.UserRpc.GetUser(l.ctx, &userClient.GetUserRequest{
+		Id: userId,
+	})
 	if err != nil {
-		if err == model.ErrNotFound {
-			return nil, errorx.ErrUserNotFound
-		}
-		l.Logger.Errorf("查询用户失败: %v", err)
-		return nil, errorx.NewCodeError(errorx.CodeUnknown, "系统错误")
+		l.Logger.Errorf("RPC获取用户失败: %v", err)
+		return nil, errorx.ErrUserNotFound
 	}
 
 	// 4. 检查用户状态
-	if user.Status == 0 {
+	if userResp.User.Status == 0 {
 		return nil, errorx.ErrUserDisabled
 	}
 
-	// 5. 验证旧密码
-	if !utils.CheckPassword(req.OldPassword, user.Password) {
+	// 5. 验证旧密码（通过RPC）
+	verifyResp, err := l.svcCtx.UserRpc.VerifyPassword(l.ctx, &userClient.VerifyPasswordRequest{
+		Username: userResp.User.Username,
+		Password: req.OldPassword,
+	})
+	if err != nil || !verifyResp.Success {
 		return nil, errorx.NewCodeError(errorx.CodeParam, "旧密码错误")
 	}
 
@@ -88,10 +91,13 @@ func (l *ChangePasswordLogic) ChangePassword(req *types.ChangePasswordRequest) (
 		return nil, errorx.NewCodeError(errorx.CodeUnknown, "系统错误")
 	}
 
-	// 8. 更新密码
-	user.Password = hashedPassword
-	if err := l.svcCtx.UserModel.Update(l.ctx, user); err != nil {
-		l.Logger.Errorf("更新密码失败: %v", err)
+	// 8. 通过RPC更新密码
+	updateResp, err := l.svcCtx.UserRpc.UpdatePassword(l.ctx, &userClient.UpdatePasswordRequest{
+		UserId:      userId,
+		NewPassword: hashedPassword,
+	})
+	if err != nil || !updateResp.Success {
+		l.Logger.Errorf("RPC更新密码失败: %v", err)
 		return nil, errorx.NewCodeError(errorx.CodeUnknown, "修改密码失败")
 	}
 

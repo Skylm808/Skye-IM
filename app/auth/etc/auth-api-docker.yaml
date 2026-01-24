@@ -8,6 +8,13 @@ Etcd:
     - etcd:2379
   Key: auth-api
 
+# User RPC 配置
+UserRpc:
+  Etcd:
+    Hosts:
+      - etcd:2379
+    Key: user.rpc
+
 # MySQL 配置
 MySQL:
   DataSource: root:630630@tcp(mysql:3306)/im_auth?charset=utf8mb4&parseTime=True&loc=Local

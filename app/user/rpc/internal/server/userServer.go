@@ -35,7 +35,7 @@ func (s *UserServer) BatchGetUsers(ctx context.Context, in *user.BatchGetUsersRe
 	return l.BatchGetUsers(in)
 }
 
-// 搜索用户（用于添加好友）
+// 搜索用户（用于添加好友 - 精确匹配）
 func (s *UserServer) SearchUser(ctx context.Context, in *user.SearchUserRequest) (*user.SearchUserResponse, error) {
 	l := logic.NewSearchUserLogic(ctx, s.svcCtx)
 	return l.SearchUser(in)
@@ -51,4 +51,34 @@ func (s *UserServer) UpdateUser(ctx context.Context, in *user.UpdateUserRequest)
 func (s *UserServer) CheckUserExist(ctx context.Context, in *user.CheckUserExistRequest) (*user.CheckUserExistResponse, error) {
 	l := logic.NewCheckUserExistLogic(ctx, s.svcCtx)
 	return l.CheckUserExist(in)
+}
+
+// ========== Auth服务专用接口 ==========
+func (s *UserServer) CreateUser(ctx context.Context, in *user.CreateUserRequest) (*user.CreateUserResponse, error) {
+	l := logic.NewCreateUserLogic(ctx, s.svcCtx)
+	return l.CreateUser(in)
+}
+
+// 验证用户密码（登录用）
+func (s *UserServer) VerifyPassword(ctx context.Context, in *user.VerifyPasswordRequest) (*user.VerifyPasswordResponse, error) {
+	l := logic.NewVerifyPasswordLogic(ctx, s.svcCtx)
+	return l.VerifyPassword(in)
+}
+
+// 按字段查找用户（支持用户名/手机/邮箱）
+func (s *UserServer) FindUserByField(ctx context.Context, in *user.FindUserByFieldRequest) (*user.FindUserByFieldResponse, error) {
+	l := logic.NewFindUserByFieldLogic(ctx, s.svcCtx)
+	return l.FindUserByField(in)
+}
+
+// 模糊搜索用户（全局搜索用）
+func (s *UserServer) SearchUsersByKeyword(ctx context.Context, in *user.SearchUsersByKeywordRequest) (*user.SearchUsersByKeywordResponse, error) {
+	l := logic.NewSearchUsersByKeywordLogic(ctx, s.svcCtx)
+	return l.SearchUsersByKeyword(in)
+}
+
+// 更新用户密码（忘记密码、修改密码用）
+func (s *UserServer) UpdatePassword(ctx context.Context, in *user.UpdatePasswordRequest) (*user.UpdatePasswordResponse, error) {
+	l := logic.NewUpdatePasswordLogic(ctx, s.svcCtx)
+	return l.UpdatePassword(in)
 }

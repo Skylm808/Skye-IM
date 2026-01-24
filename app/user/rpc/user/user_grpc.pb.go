@@ -2,7 +2,7 @@
 // versions:
 // - protoc-gen-go-grpc v1.2.0
 // - protoc             v3.20.3
-// source: app/user/rpc/user.proto
+// source: user.proto
 
 package user
 
@@ -26,12 +26,23 @@ type UserClient interface {
 	GetUser(ctx context.Context, in *GetUserRequest, opts ...grpc.CallOption) (*GetUserResponse, error)
 	// 批量获取用户信息（消息列表、群成员列表等场景）
 	BatchGetUsers(ctx context.Context, in *BatchGetUsersRequest, opts ...grpc.CallOption) (*BatchGetUsersResponse, error)
-	// 搜索用户（用于添加好友）
+	// 搜索用户（用于添加好友 - 精确匹配）
 	SearchUser(ctx context.Context, in *SearchUserRequest, opts ...grpc.CallOption) (*SearchUserResponse, error)
 	// 更新用户信息
 	UpdateUser(ctx context.Context, in *UpdateUserRequest, opts ...grpc.CallOption) (*UpdateUserResponse, error)
 	// 检查用户是否存在
 	CheckUserExist(ctx context.Context, in *CheckUserExistRequest, opts ...grpc.CallOption) (*CheckUserExistResponse, error)
+	// ========== Auth服务专用接口 ==========
+	// 创建用户（注册用）
+	CreateUser(ctx context.Context, in *CreateUserRequest, opts ...grpc.CallOption) (*CreateUserResponse, error)
+	// 验证用户密码（登录用）
+	VerifyPassword(ctx context.Context, in *VerifyPasswordRequest, opts ...grpc.CallOption) (*VerifyPasswordResponse, error)
+	// 按字段查找用户（支持用户名/手机/邮箱）
+	FindUserByField(ctx context.Context, in *FindUserByFieldRequest, opts ...grpc.CallOption) (*FindUserByFieldResponse, error)
+	// 模糊搜索用户（全局搜索用）
+	SearchUsersByKeyword(ctx context.Context, in *SearchUsersByKeywordRequest, opts ...grpc.CallOption) (*SearchUsersByKeywordResponse, error)
+	// 更新用户密码（忘记密码、修改密码用）
+	UpdatePassword(ctx context.Context, in *UpdatePasswordRequest, opts ...grpc.CallOption) (*UpdatePasswordResponse, error)
 }
 
 type userClient struct {
@@ -87,6 +98,51 @@ func (c *userClient) CheckUserExist(ctx context.Context, in *CheckUserExistReque
 	return out, nil
 }
 
+func (c *userClient) CreateUser(ctx context.Context, in *CreateUserRequest, opts ...grpc.CallOption) (*CreateUserResponse, error) {
+	out := new(CreateUserResponse)
+	err := c.cc.Invoke(ctx, "/user.User/CreateUser", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userClient) VerifyPassword(ctx context.Context, in *VerifyPasswordRequest, opts ...grpc.CallOption) (*VerifyPasswordResponse, error) {
+	out := new(VerifyPasswordResponse)
+	err := c.cc.Invoke(ctx, "/user.User/VerifyPassword", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userClient) FindUserByField(ctx context.Context, in *FindUserByFieldRequest, opts ...grpc.CallOption) (*FindUserByFieldResponse, error) {
+	out := new(FindUserByFieldResponse)
+	err := c.cc.Invoke(ctx, "/user.User/FindUserByField", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userClient) SearchUsersByKeyword(ctx context.Context, in *SearchUsersByKeywordRequest, opts ...grpc.CallOption) (*SearchUsersByKeywordResponse, error) {
+	out := new(SearchUsersByKeywordResponse)
+	err := c.cc.Invoke(ctx, "/user.User/SearchUsersByKeyword", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userClient) UpdatePassword(ctx context.Context, in *UpdatePasswordRequest, opts ...grpc.CallOption) (*UpdatePasswordResponse, error) {
+	out := new(UpdatePasswordResponse)
+	err := c.cc.Invoke(ctx, "/user.User/UpdatePassword", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // UserServer is the server API for User service.
 // All implementations must embed UnimplementedUserServer
 // for forward compatibility
@@ -95,12 +151,23 @@ type UserServer interface {
 	GetUser(context.Context, *GetUserRequest) (*GetUserResponse, error)
 	// 批量获取用户信息（消息列表、群成员列表等场景）
 	BatchGetUsers(context.Context, *BatchGetUsersRequest) (*BatchGetUsersResponse, error)
-	// 搜索用户（用于添加好友）
+	// 搜索用户（用于添加好友 - 精确匹配）
 	SearchUser(context.Context, *SearchUserRequest) (*SearchUserResponse, error)
 	// 更新用户信息
 	UpdateUser(context.Context, *UpdateUserRequest) (*UpdateUserResponse, error)
 	// 检查用户是否存在
 	CheckUserExist(context.Context, *CheckUserExistRequest) (*CheckUserExistResponse, error)
+	// ========== Auth服务专用接口 ==========
+	// 创建用户（注册用）
+	CreateUser(context.Context, *CreateUserRequest) (*CreateUserResponse, error)
+	// 验证用户密码（登录用）
+	VerifyPassword(context.Context, *VerifyPasswordRequest) (*VerifyPasswordResponse, error)
+	// 按字段查找用户（支持用户名/手机/邮箱）
+	FindUserByField(context.Context, *FindUserByFieldRequest) (*FindUserByFieldResponse, error)
+	// 模糊搜索用户（全局搜索用）
+	SearchUsersByKeyword(context.Context, *SearchUsersByKeywordRequest) (*SearchUsersByKeywordResponse, error)
+	// 更新用户密码（忘记密码、修改密码用）
+	UpdatePassword(context.Context, *UpdatePasswordRequest) (*UpdatePasswordResponse, error)
 	mustEmbedUnimplementedUserServer()
 }
 
@@ -122,6 +189,21 @@ func (UnimplementedUserServer) UpdateUser(context.Context, *UpdateUserRequest) (
 }
 func (UnimplementedUserServer) CheckUserExist(context.Context, *CheckUserExistRequest) (*CheckUserExistResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CheckUserExist not implemented")
+}
+func (UnimplementedUserServer) CreateUser(context.Context, *CreateUserRequest) (*CreateUserResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CreateUser not implemented")
+}
+func (UnimplementedUserServer) VerifyPassword(context.Context, *VerifyPasswordRequest) (*VerifyPasswordResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method VerifyPassword not implemented")
+}
+func (UnimplementedUserServer) FindUserByField(context.Context, *FindUserByFieldRequest) (*FindUserByFieldResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method FindUserByField not implemented")
+}
+func (UnimplementedUserServer) SearchUsersByKeyword(context.Context, *SearchUsersByKeywordRequest) (*SearchUsersByKeywordResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SearchUsersByKeyword not implemented")
+}
+func (UnimplementedUserServer) UpdatePassword(context.Context, *UpdatePasswordRequest) (*UpdatePasswordResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UpdatePassword not implemented")
 }
 func (UnimplementedUserServer) mustEmbedUnimplementedUserServer() {}
 
@@ -226,6 +308,96 @@ func _User_CheckUserExist_Handler(srv interface{}, ctx context.Context, dec func
 	return interceptor(ctx, in, info, handler)
 }
 
+func _User_CreateUser_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateUserRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServer).CreateUser(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/user.User/CreateUser",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServer).CreateUser(ctx, req.(*CreateUserRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _User_VerifyPassword_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(VerifyPasswordRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServer).VerifyPassword(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/user.User/VerifyPassword",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServer).VerifyPassword(ctx, req.(*VerifyPasswordRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _User_FindUserByField_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(FindUserByFieldRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServer).FindUserByField(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/user.User/FindUserByField",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServer).FindUserByField(ctx, req.(*FindUserByFieldRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _User_SearchUsersByKeyword_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SearchUsersByKeywordRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServer).SearchUsersByKeyword(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/user.User/SearchUsersByKeyword",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServer).SearchUsersByKeyword(ctx, req.(*SearchUsersByKeywordRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _User_UpdatePassword_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdatePasswordRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServer).UpdatePassword(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/user.User/UpdatePassword",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServer).UpdatePassword(ctx, req.(*UpdatePasswordRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // User_ServiceDesc is the grpc.ServiceDesc for User service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -253,7 +425,27 @@ var User_ServiceDesc = grpc.ServiceDesc{
 			MethodName: "CheckUserExist",
 			Handler:    _User_CheckUserExist_Handler,
 		},
+		{
+			MethodName: "CreateUser",
+			Handler:    _User_CreateUser_Handler,
+		},
+		{
+			MethodName: "VerifyPassword",
+			Handler:    _User_VerifyPassword_Handler,
+		},
+		{
+			MethodName: "FindUserByField",
+			Handler:    _User_FindUserByField_Handler,
+		},
+		{
+			MethodName: "SearchUsersByKeyword",
+			Handler:    _User_SearchUsersByKeyword_Handler,
+		},
+		{
+			MethodName: "UpdatePassword",
+			Handler:    _User_UpdatePassword_Handler,
+		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "app/user/rpc/user.proto",
+	Metadata: "user.proto",
 }

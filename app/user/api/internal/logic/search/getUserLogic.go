@@ -9,7 +9,7 @@ import (
 
 	"SkyeIM/app/user/api/internal/svc"
 	"SkyeIM/app/user/api/internal/types"
-	"auth/model"
+	"SkyeIM/app/user/rpc/userClient"
 
 	"github.com/zeromicro/go-zero/core/logx"
 )
@@ -34,17 +34,16 @@ func (l *GetUserLogic) GetUser(req *types.GetUserRequest) (resp *types.ProfileRe
 		return nil, fmt.Errorf("无效的用户ID")
 	}
 
-	// 查询用户信息
-	user, err := l.svcCtx.UserModel.FindOne(l.ctx, uint64(req.Id))
+	// 通过RPC获取用户信息
+	userResp, err := l.svcCtx.UserRpc.GetUser(l.ctx, &userClient.GetUserRequest{
+		Id: req.Id,
+	})
 	if err != nil {
-		if err == model.ErrNotFound {
-			return nil, fmt.Errorf("用户不存在")
-		}
-		l.Logger.Errorf("查询用户失败: %v", err)
-		return nil, fmt.Errorf("查询用户失败")
+		l.Logger.Errorf("RPC获取用户失败: %v", err)
+		return nil, fmt.Errorf("获取用户信息失败")
 	}
 
 	return &types.ProfileResponse{
-		User: convertToUserInfo(user),
+		User: convertToUserInfo(userResp.User),
 	}, nil
 }

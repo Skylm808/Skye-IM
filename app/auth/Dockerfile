@@ -1,11 +1,14 @@
-# 多阶段构建：先编译，再运�?
+# 多阶段构建：先编译，再运行
 FROM golang:1.25-alpine AS builder
 
 # 设置工作目录
 WORKDIR /app
 
-# 复制 go.mod �?go.sum
+# 复制 go.mod go.sum
 COPY go.mod go.sum ./
+
+# 设置 Go Proxy
+ENV GOPROXY=https://goproxy.cn,direct
 
 # 下载依赖
 RUN go mod download
@@ -23,7 +26,7 @@ FROM alpine:latest
 # 安装 ca-certificates（HTTPS 需要）
 RUN apk --no-cache add ca-certificates tzdata
 
-# 设置时区为上�?
+# 设置时区为上海
 ENV TZ=Asia/Shanghai
 
 WORKDIR /app

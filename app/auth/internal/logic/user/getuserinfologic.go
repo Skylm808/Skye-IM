@@ -7,10 +7,10 @@ import (
 	"context"
 	"encoding/json"
 
+	"SkyeIM/app/user/rpc/userClient"
 	"SkyeIM/common/errorx"
 	"auth/internal/svc"
 	"auth/internal/types"
-	"auth/model"
 
 	"github.com/zeromicro/go-zero/core/logx"
 )
@@ -51,38 +51,27 @@ func (l *GetUserInfoLogic) GetUserInfo(req *types.Empty) (resp *types.UserInfoRe
 		return nil, errorx.ErrUnauthorized
 	}
 
-	// 查询用户信息（注意：FindOne 需要 uint64）
-	user, err := l.svcCtx.UserModel.FindOne(l.ctx, uint64(userId))
+	// 通过RPC查询用户信息
+	userResp, err := l.svcCtx.UserRpc.GetUser(l.ctx, &userClient.GetUserRequest{
+		Id: userId,
+	})
 	if err != nil {
-		if err == model.ErrNotFound {
-			return nil, errorx.ErrUserNotFound
-		}
-		l.Logger.Errorf("查询用户失败: %v", err)
-		return nil, errorx.NewCodeError(errorx.CodeUnknown, "系统错误")
+		l.Logger.Errorf("RPC查询用户失败: %v", err)
+		return nil, errorx.ErrUserNotFound
 	}
 
 	// 检查用户状态
-	if user.Status == 0 {
+	if userResp.User.Status == 0 {
 		return nil, errorx.ErrUserDisabled
 	}
 
-	// 处理可空字段
-	phone := ""
-	if user.Phone.Valid {
-		phone = user.Phone.String
-	}
-	email := ""
-	if user.Email.Valid {
-		email = user.Email.String
-	}
-
 	return &types.UserInfoResponse{
-		Id:       int64(user.Id), // uint64 转 int64
-		Username: user.Username,
-		Phone:    phone,
-		Email:    email,
-		Nickname: user.Nickname,
-		Avatar:   user.Avatar,
-		Status:   int64(user.Status), // uint64 转 int64
+		Id:       userResp.User.Id,
+		Username: userResp.User.Username,
+		Phone:    userResp.User.Phone,
+		Email:    userResp.User.Email,
+		Nickname: userResp.User.Nickname,
+		Avatar:   userResp.User.Avatar,
+		Status:   userResp.User.Status,
 	}, nil
 }

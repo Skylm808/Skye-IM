@@ -5,16 +5,15 @@ package public
 
 import (
 	"context"
-	"database/sql"
 	"strings"
 
+	"SkyeIM/app/user/rpc/userClient"
 	"SkyeIM/common/captcha"
 	"SkyeIM/common/errorx"
 	"SkyeIM/common/jwt"
 	"SkyeIM/common/utils"
 	"auth/internal/svc"
 	"auth/internal/types"
-	"auth/model"
 
 	"github.com/zeromicro/go-zero/core/logx"
 )
@@ -59,34 +58,43 @@ func (l *RegisterLogic) Register(req *types.RegisterRequest) (resp *types.TokenR
 	l.Logger.Infof("验证码验证成功: email=%s", req.Email)
 
 	// 3. 检查用户名是否已存在
-	_, err = l.svcCtx.UserModel.FindOneByUsername(l.ctx, req.Username)
-	if err == nil {
-		return nil, errorx.ErrUsernameExists
-	}
-	if err != model.ErrNotFound {
-		l.Logger.Errorf("查询用户失败: %v", err)
+	userResp, err := l.svcCtx.UserRpc.FindUserByField(l.ctx, &userClient.FindUserByFieldRequest{
+		FieldType:  "username",
+		FieldValue: req.Username,
+	})
+	if err != nil {
+		l.Logger.Errorf("RPC查询用户名失败: %v", err)
 		return nil, errorx.NewCodeError(errorx.CodeUnknown, "系统错误")
+	}
+	if userResp.Found {
+		return nil, errorx.ErrUsernameExists
 	}
 
 	// 4. 检查邮箱是否已存在
-	_, err = l.svcCtx.UserModel.FindOneByEmail(l.ctx, sql.NullString{String: req.Email, Valid: true})
-	if err == nil {
-		return nil, errorx.ErrEmailExists
-	}
-	if err != model.ErrNotFound {
-		l.Logger.Errorf("查询邮箱失败: %v", err)
+	emailResp, err := l.svcCtx.UserRpc.FindUserByField(l.ctx, &userClient.FindUserByFieldRequest{
+		FieldType:  "email",
+		FieldValue: req.Email,
+	})
+	if err != nil {
+		l.Logger.Errorf("RPC查询邮箱失败: %v", err)
 		return nil, errorx.NewCodeError(errorx.CodeUnknown, "系统错误")
+	}
+	if emailResp.Found {
+		return nil, errorx.ErrEmailExists
 	}
 
 	// 5. 检查手机号是否已存在（如果提供了手机号）
 	if req.Phone != "" {
-		_, err = l.svcCtx.UserModel.FindOneByPhone(l.ctx, sql.NullString{String: req.Phone, Valid: true})
-		if err == nil {
-			return nil, errorx.ErrPhoneExists
-		}
-		if err != model.ErrNotFound {
-			l.Logger.Errorf("查询手机号失败: %v", err)
+		phoneResp, err := l.svcCtx.UserRpc.FindUserByField(l.ctx, &userClient.FindUserByFieldRequest{
+			FieldType:  "phone",
+			FieldValue: req.Phone,
+		})
+		if err != nil {
+			l.Logger.Errorf("RPC查询手机号失败: %v", err)
 			return nil, errorx.NewCodeError(errorx.CodeUnknown, "系统错误")
+		}
+		if phoneResp.Found {
+			return nil, errorx.ErrPhoneExists
 		}
 	}
 
@@ -97,39 +105,22 @@ func (l *RegisterLogic) Register(req *types.RegisterRequest) (resp *types.TokenR
 		return nil, errorx.NewCodeError(errorx.CodeUnknown, "系统错误")
 	}
 
-	// 7. 设置昵称
-	nickname := req.Nickname
-	if nickname == "" {
-		nickname = req.Username
-	}
-
-	// 8. 创建用户
-	user := &model.User{
+	// 7. 通过User RPC创建用户
+	createResp, err := l.svcCtx.UserRpc.CreateUser(l.ctx, &userClient.CreateUserRequest{
 		Username: req.Username,
 		Password: hashedPassword,
-		Email:    sql.NullString{String: req.Email, Valid: true},
-		Phone:    sql.NullString{String: req.Phone, Valid: req.Phone != ""},
-		Nickname: nickname,
-		Avatar:   "",
-		Status:   1,
-	}
-
-	result, err := l.svcCtx.UserModel.Insert(l.ctx, user)
+		Email:    req.Email,
+		Phone:    req.Phone,
+		Nickname: req.Nickname,
+	})
 	if err != nil {
-		l.Logger.Errorf("创建用户失败: %v", err)
+		l.Logger.Errorf("RPC创建用户失败: %v", err)
 		return nil, errorx.NewCodeError(errorx.CodeUnknown, "注册失败")
 	}
 
-	// 9. 获取新用户ID
-	userId, err := result.LastInsertId()
-	if err != nil {
-		l.Logger.Errorf("获取用户ID失败: %v", err)
-		return nil, errorx.NewCodeError(errorx.CodeUnknown, "系统错误")
-	}
-
-	// 10. 生成Token
+	// 8. 生成Token
 	tokenPair, err := jwt.GenerateTokenPair(
-		userId,
+		createResp.UserId,
 		req.Username,
 		l.svcCtx.Config.Auth.AccessSecret,
 		l.svcCtx.Config.Auth.AccessExpire,
@@ -141,7 +132,7 @@ func (l *RegisterLogic) Register(req *types.RegisterRequest) (resp *types.TokenR
 		return nil, errorx.NewCodeError(errorx.CodeUnknown, "系统错误")
 	}
 
-	l.Logger.Infof("用户注册成功: userId=%d, username=%s, email=%s", userId, req.Username, req.Email)
+	l.Logger.Infof("用户注册成功: userId=%d, username=%s, email=%s", createResp.UserId, req.Username, req.Email)
 
 	return &types.TokenResponse{
 		AccessToken:  tokenPair.AccessToken,

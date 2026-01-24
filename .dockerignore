@@ -13,6 +13,10 @@ README.md
 LICENSE
 *.md
 interview_docs/
+docs/
+assets/
+API/
+*.sql
 
 # 测试文件
 *_test.go

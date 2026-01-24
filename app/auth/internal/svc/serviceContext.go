@@ -4,26 +4,24 @@
 package svc
 
 import (
+	"SkyeIM/app/user/rpc/userClient"
 	"SkyeIM/common/captcha"
 	"SkyeIM/common/email"
 	"auth/internal/config"
-	"auth/model"
 
 	"github.com/go-playground/validator/v10"
-	"github.com/zeromicro/go-zero/core/stores/sqlx"
+	"github.com/zeromicro/go-zero/zrpc"
 )
 
 type ServiceContext struct {
 	Config         config.Config
-	UserModel      model.UserModel
+	UserRpc        userClient.User
 	Validator      *validator.Validate
 	EmailSender    *email.Sender
 	CaptchaService *captcha.Service
 }
 
 func NewServiceContext(c config.Config) *ServiceContext {
-	conn := sqlx.NewMysql(c.MySQL.DataSource)
-
 	// 创建邮件发送器
 	emailSender := email.NewSender(email.Config{
 		Host:     c.Email.Host,
@@ -38,7 +36,7 @@ func NewServiceContext(c config.Config) *ServiceContext {
 
 	return &ServiceContext{
 		Config:         c,
-		UserModel:      model.NewUserModel(conn, c.Cache),
+		UserRpc:        userClient.NewUser(zrpc.MustNewClient(c.UserRpc)),
 		Validator:      validator.New(),
 		EmailSender:    emailSender,
 		CaptchaService: captchaService,

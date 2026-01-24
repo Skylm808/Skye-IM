@@ -5,15 +5,14 @@ package public
 
 import (
 	"context"
-	"database/sql"
 	"strings"
 
+	"SkyeIM/app/user/rpc/userClient"
 	"SkyeIM/common/captcha"
 	"SkyeIM/common/errorx"
 	"SkyeIM/common/utils"
 	"auth/internal/svc"
 	"auth/internal/types"
-	"auth/model"
 
 	"github.com/zeromicro/go-zero/core/logx"
 )
@@ -53,18 +52,21 @@ func (l *ForgotPasswordLogic) ForgotPassword(req *types.ForgotPasswordRequest) (
 		return nil, errorx.NewCodeError(errorx.CodeParam, "验证码错误或已过期")
 	}
 
-	// 3. 查找用户
-	user, err := l.svcCtx.UserModel.FindOneByEmail(l.ctx, sql.NullString{String: email, Valid: true})
+	// 3. 通过RPC查找用户
+	userResp, err := l.svcCtx.UserRpc.FindUserByField(l.ctx, &userClient.FindUserByFieldRequest{
+		FieldType:  "email",
+		FieldValue: email,
+	})
 	if err != nil {
-		if err == model.ErrNotFound {
-			return nil, errorx.NewCodeError(errorx.CodeParam, "该邮箱未注册")
-		}
-		l.Logger.Errorf("查询用户失败: %v", err)
+		l.Logger.Errorf("RPC查询用户失败: %v", err)
 		return nil, errorx.NewCodeError(errorx.CodeUnknown, "系统错误")
+	}
+	if !userResp.Found {
+		return nil, errorx.NewCodeError(errorx.CodeParam, "该邮箱未注册")
 	}
 
 	// 4. 检查用户状态
-	if user.Status == 0 {
+	if userResp.User.Status == 0 {
 		return nil, errorx.ErrUserDisabled
 	}
 
@@ -75,14 +77,17 @@ func (l *ForgotPasswordLogic) ForgotPassword(req *types.ForgotPasswordRequest) (
 		return nil, errorx.NewCodeError(errorx.CodeUnknown, "系统错误")
 	}
 
-	// 6. 更新密码
-	user.Password = hashedPassword
-	if err := l.svcCtx.UserModel.Update(l.ctx, user); err != nil {
-		l.Logger.Errorf("更新密码失败: %v", err)
+	// 6. 通过RPC更新密码
+	updateResp, err := l.svcCtx.UserRpc.UpdatePassword(l.ctx, &userClient.UpdatePasswordRequest{
+		UserId:      userResp.User.Id,
+		NewPassword: hashedPassword,
+	})
+	if err != nil || !updateResp.Success {
+		l.Logger.Errorf("RPC更新密码失败: %v", err)
 		return nil, errorx.NewCodeError(errorx.CodeUnknown, "重置密码失败")
 	}
 
-	l.Logger.Infof("密码重置成功: userId=%d, email=%s", user.Id, email)
+	l.Logger.Infof("密码重置成功: userId=%d, email=%s", userResp.User.Id, email)
 
 	return &types.ForgotPasswordResponse{
 		Message: "密码重置成功，请使用新密码登录",

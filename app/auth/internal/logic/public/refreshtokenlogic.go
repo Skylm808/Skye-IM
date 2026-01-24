@@ -6,11 +6,11 @@ package public
 import (
 	"context"
 
+	"SkyeIM/app/user/rpc/userClient"
 	"SkyeIM/common/errorx"
 	"SkyeIM/common/jwt"
 	"auth/internal/svc"
 	"auth/internal/types"
-	"auth/model"
 
 	"github.com/zeromicro/go-zero/core/logx"
 )
@@ -48,24 +48,25 @@ func (l *RefreshTokenLogic) RefreshToken(req *types.RefreshTokenRequest) (resp *
 		return nil, errorx.ErrRefreshTokenInvalid
 	}
 
-	// 4. 验证用户是否存在且状态正常（注意：claims.UserId 是 int64，需要转换为 uint64）
-	user, err := l.svcCtx.UserModel.FindOne(l.ctx, uint64(claims.UserId))
+	// 4. 验证用户是否存在且状态正常（通过User RPC）
+	userResp, err := l.svcCtx.UserRpc.GetUser(l.ctx, &userClient.GetUserRequest{
+		Id: claims.UserId,
+	})
 	if err != nil {
-		if err == model.ErrNotFound {
-			return nil, errorx.ErrUserNotFound
-		}
-		l.Logger.Errorf("查询用户失败: %v", err)
-		return nil, errorx.NewCodeError(errorx.CodeUnknown, "系统错误")
+		l.Logger.Errorf("RPC查询用户失败: %v", err)
+		return nil, errorx.ErrUserNotFound
 	}
-
-	if user.Status == 0 {
+	if userResp.User == nil {
+		return nil, errorx.ErrUserNotFound
+	}
+	if userResp.User.Status == 0 {
 		return nil, errorx.ErrUserDisabled
 	}
 
-	// 5. 生成新的Token对（注意：user.Id 是 uint64，需要转换为 int64）
+	// 5. 生成新的Token对
 	tokenPair, err := jwt.GenerateTokenPair(
-		int64(user.Id),
-		user.Username,
+		userResp.User.Id,
+		userResp.User.Username,
 		l.svcCtx.Config.Auth.AccessSecret,
 		l.svcCtx.Config.Auth.AccessExpire,
 		l.svcCtx.Config.RefreshToken.Secret,
@@ -76,7 +77,7 @@ func (l *RefreshTokenLogic) RefreshToken(req *types.RefreshTokenRequest) (resp *
 		return nil, errorx.NewCodeError(errorx.CodeUnknown, "系统错误")
 	}
 
-	l.Logger.Infof("Token刷新成功: userId=%d", user.Id)
+	l.Logger.Infof("Token刷新成功: userId=%d", userResp.User.Id)
 
 	return &types.TokenResponse{
 		AccessToken:  tokenPair.AccessToken,

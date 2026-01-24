@@ -2,7 +2,7 @@
 // goctl 1.9.2
 // Source: user.proto
 
-package userclient
+package userClient
 
 import (
 	"context"
@@ -14,29 +14,49 @@ import (
 )
 
 type (
-	BatchGetUsersRequest   = user.BatchGetUsersRequest
-	BatchGetUsersResponse  = user.BatchGetUsersResponse
-	CheckUserExistRequest  = user.CheckUserExistRequest
-	CheckUserExistResponse = user.CheckUserExistResponse
-	GetUserRequest         = user.GetUserRequest
-	GetUserResponse        = user.GetUserResponse
-	SearchUserRequest      = user.SearchUserRequest
-	SearchUserResponse     = user.SearchUserResponse
-	UpdateUserRequest      = user.UpdateUserRequest
-	UpdateUserResponse     = user.UpdateUserResponse
-	UserInfo               = user.UserInfo
+	BatchGetUsersRequest         = user.BatchGetUsersRequest
+	BatchGetUsersResponse        = user.BatchGetUsersResponse
+	CheckUserExistRequest        = user.CheckUserExistRequest
+	CheckUserExistResponse       = user.CheckUserExistResponse
+	CreateUserRequest            = user.CreateUserRequest
+	CreateUserResponse           = user.CreateUserResponse
+	FindUserByFieldRequest       = user.FindUserByFieldRequest
+	FindUserByFieldResponse      = user.FindUserByFieldResponse
+	GetUserRequest               = user.GetUserRequest
+	GetUserResponse              = user.GetUserResponse
+	SearchUserRequest            = user.SearchUserRequest
+	SearchUserResponse           = user.SearchUserResponse
+	SearchUsersByKeywordRequest  = user.SearchUsersByKeywordRequest
+	SearchUsersByKeywordResponse = user.SearchUsersByKeywordResponse
+	UpdatePasswordRequest        = user.UpdatePasswordRequest
+	UpdatePasswordResponse       = user.UpdatePasswordResponse
+	UpdateUserRequest            = user.UpdateUserRequest
+	UpdateUserResponse           = user.UpdateUserResponse
+	UserInfo                     = user.UserInfo
+	VerifyPasswordRequest        = user.VerifyPasswordRequest
+	VerifyPasswordResponse       = user.VerifyPasswordResponse
 
 	User interface {
 		// 获取单个用户信息
 		GetUser(ctx context.Context, in *GetUserRequest, opts ...grpc.CallOption) (*GetUserResponse, error)
 		// 批量获取用户信息（消息列表、群成员列表等场景）
 		BatchGetUsers(ctx context.Context, in *BatchGetUsersRequest, opts ...grpc.CallOption) (*BatchGetUsersResponse, error)
-		// 搜索用户（用于添加好友）
+		// 搜索用户（用于添加好友 - 精确匹配）
 		SearchUser(ctx context.Context, in *SearchUserRequest, opts ...grpc.CallOption) (*SearchUserResponse, error)
 		// 更新用户信息
 		UpdateUser(ctx context.Context, in *UpdateUserRequest, opts ...grpc.CallOption) (*UpdateUserResponse, error)
 		// 检查用户是否存在
 		CheckUserExist(ctx context.Context, in *CheckUserExistRequest, opts ...grpc.CallOption) (*CheckUserExistResponse, error)
+		// ========== Auth服务专用接口 ==========
+		CreateUser(ctx context.Context, in *CreateUserRequest, opts ...grpc.CallOption) (*CreateUserResponse, error)
+		// 验证用户密码（登录用）
+		VerifyPassword(ctx context.Context, in *VerifyPasswordRequest, opts ...grpc.CallOption) (*VerifyPasswordResponse, error)
+		// 按字段查找用户（支持用户名/手机/邮箱）
+		FindUserByField(ctx context.Context, in *FindUserByFieldRequest, opts ...grpc.CallOption) (*FindUserByFieldResponse, error)
+		// 模糊搜索用户（全局搜索用）
+		SearchUsersByKeyword(ctx context.Context, in *SearchUsersByKeywordRequest, opts ...grpc.CallOption) (*SearchUsersByKeywordResponse, error)
+		// 更新用户密码（忘记密码、修改密码用）
+		UpdatePassword(ctx context.Context, in *UpdatePasswordRequest, opts ...grpc.CallOption) (*UpdatePasswordResponse, error)
 	}
 
 	defaultUser struct {
@@ -62,7 +82,7 @@ func (m *defaultUser) BatchGetUsers(ctx context.Context, in *BatchGetUsersReques
 	return client.BatchGetUsers(ctx, in, opts...)
 }
 
-// 搜索用户（用于添加好友）
+// 搜索用户（用于添加好友 - 精确匹配）
 func (m *defaultUser) SearchUser(ctx context.Context, in *SearchUserRequest, opts ...grpc.CallOption) (*SearchUserResponse, error) {
 	client := user.NewUserClient(m.cli.Conn())
 	return client.SearchUser(ctx, in, opts...)
@@ -78,4 +98,34 @@ func (m *defaultUser) UpdateUser(ctx context.Context, in *UpdateUserRequest, opt
 func (m *defaultUser) CheckUserExist(ctx context.Context, in *CheckUserExistRequest, opts ...grpc.CallOption) (*CheckUserExistResponse, error) {
 	client := user.NewUserClient(m.cli.Conn())
 	return client.CheckUserExist(ctx, in, opts...)
+}
+
+// ========== Auth服务专用接口 ==========
+func (m *defaultUser) CreateUser(ctx context.Context, in *CreateUserRequest, opts ...grpc.CallOption) (*CreateUserResponse, error) {
+	client := user.NewUserClient(m.cli.Conn())
+	return client.CreateUser(ctx, in, opts...)
+}
+
+// 验证用户密码（登录用）
+func (m *defaultUser) VerifyPassword(ctx context.Context, in *VerifyPasswordRequest, opts ...grpc.CallOption) (*VerifyPasswordResponse, error) {
+	client := user.NewUserClient(m.cli.Conn())
+	return client.VerifyPassword(ctx, in, opts...)
+}
+
+// 按字段查找用户（支持用户名/手机/邮箱）
+func (m *defaultUser) FindUserByField(ctx context.Context, in *FindUserByFieldRequest, opts ...grpc.CallOption) (*FindUserByFieldResponse, error) {
+	client := user.NewUserClient(m.cli.Conn())
+	return client.FindUserByField(ctx, in, opts...)
+}
+
+// 模糊搜索用户（全局搜索用）
+func (m *defaultUser) SearchUsersByKeyword(ctx context.Context, in *SearchUsersByKeywordRequest, opts ...grpc.CallOption) (*SearchUsersByKeywordResponse, error) {
+	client := user.NewUserClient(m.cli.Conn())
+	return client.SearchUsersByKeyword(ctx, in, opts...)
+}
+
+// 更新用户密码（忘记密码、修改密码用）
+func (m *defaultUser) UpdatePassword(ctx context.Context, in *UpdatePasswordRequest, opts ...grpc.CallOption) (*UpdatePasswordResponse, error) {
+	client := user.NewUserClient(m.cli.Conn())
+	return client.UpdatePassword(ctx, in, opts...)
 }

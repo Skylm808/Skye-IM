@@ -5,14 +5,13 @@ package public
 
 import (
 	"context"
-	"database/sql"
 	"strings"
 
+	"SkyeIM/app/user/rpc/userClient"
 	"SkyeIM/common/captcha"
 	"SkyeIM/common/errorx"
 	"auth/internal/svc"
 	"auth/internal/types"
-	"auth/model"
 
 	"github.com/zeromicro/go-zero/core/logx"
 )
@@ -41,26 +40,25 @@ func (l *SendCaptchaLogic) SendCaptcha(req *types.SendCaptchaRequest) (resp *typ
 	email := strings.TrimSpace(strings.ToLower(req.Email))
 	captchaType := captcha.CaptchaType(req.Type)
 
-	// 2. 根据验证码类型检查邮箱
-	_, err = l.svcCtx.UserModel.FindOneByEmail(l.ctx, sql.NullString{String: email, Valid: true})
+	// 2. 根据验证码类型检查邮箱（通过User RPC）
+	findResp, err := l.svcCtx.UserRpc.FindUserByField(l.ctx, &userClient.FindUserByFieldRequest{
+		FieldType:  "email",
+		FieldValue: email,
+	})
+	if err != nil {
+		l.Logger.Errorf("RPC查询邮箱失败: %v", err)
+		return nil, errorx.NewCodeError(errorx.CodeUnknown, "系统错误")
+	}
 
 	if captchaType == captcha.CaptchaTypeRegister {
 		// 注册：邮箱不能已存在
-		if err == nil {
+		if findResp.Found {
 			return nil, errorx.ErrEmailExists
-		}
-		if err != model.ErrNotFound {
-			l.Logger.Errorf("查询邮箱失败: %v", err)
-			return nil, errorx.NewCodeError(errorx.CodeUnknown, "系统错误")
 		}
 	} else if captchaType == captcha.CaptchaTypeReset {
 		// 重置密码：邮箱必须存在
-		if err == model.ErrNotFound {
+		if !findResp.Found {
 			return nil, errorx.NewCodeError(errorx.CodeParam, "该邮箱未注册")
-		}
-		if err != nil {
-			l.Logger.Errorf("查询邮箱失败: %v", err)
-			return nil, errorx.NewCodeError(errorx.CodeUnknown, "系统错误")
 		}
 	}
 

@@ -1,4 +1,4 @@
-# 多阶段构建：先编译，再运行
+# syntax=docker/dockerfile:1
 FROM golang:1.25-alpine AS builder
 
 # 设置工作目录
@@ -11,14 +11,17 @@ COPY go.mod go.sum ./
 ENV GOPROXY=https://goproxy.cn,direct
 
 # 下载依赖
-RUN go mod download
+RUN --mount=type=cache,target=/go/pkg/mod \
+    go mod download
 
 # 复制整个项目
 COPY . .
 
 # 编译 Auth 服务
 WORKDIR /app/app/auth
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o auth auth.go
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    CGO_ENABLED=0 GOOS=linux go build -o auth auth.go
 
 # 运行阶段：使用更小的镜像
 FROM alpine:latest

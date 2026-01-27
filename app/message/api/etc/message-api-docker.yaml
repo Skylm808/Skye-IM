@@ -4,6 +4,12 @@ Name: message-api
 Host: 0.0.0.0
 Port: 10400
 
+# Etcd 服务注册（让Gateway可以发现此服务）
+Etcd:
+  Hosts:
+    - etcd:2379
+  Key: message-api
+
 # JWT 配置（与 Auth 服务保持一致）
 Auth:
   AccessSecret: "Skylm-im-secret-key"

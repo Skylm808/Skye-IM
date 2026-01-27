@@ -4,6 +4,7 @@
 package config
 
 import (
+	"github.com/zeromicro/go-zero/core/discov"
 	"github.com/zeromicro/go-zero/core/stores/cache"
 	"github.com/zeromicro/go-zero/core/stores/redis"
 	"github.com/zeromicro/go-zero/rest"
@@ -48,9 +49,9 @@ type Config struct {
 		From     string // 发件人名称
 	}
 
-	// 验证码配置
 	Captcha struct {
 		Expire int64 // 验证码过期时间（秒）
 		Length int   // 验证码长度
 	}
+	Etcd discov.EtcdConf
 }

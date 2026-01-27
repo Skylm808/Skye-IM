@@ -1,7 +1,12 @@
 Name: upload-api
-Host: 0.0.0.0
+Host: 127.0.0.1
 Port: 10600
 
+# Etcd 服务注册 (让Gateway可以发现此服务)
+Etcd:
+  Hosts:
+    - 127.0.0.1:2379
+  Key: upload-api
 # JWT配置（与Auth服务保持一致）
 Auth:
   AccessSecret: "Skylm-im-secret-key"
@@ -10,6 +15,7 @@ Auth:
 # MinIO配置
 MinIO:
   Endpoint: "localhost:9000"
+  PublicEndpoint: "http://localhost:9000"  # 前端访问地址
   AccessKeyID: "admin"
   SecretAccessKey: "630630630"
   UseSSL: false

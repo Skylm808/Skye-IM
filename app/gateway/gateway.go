@@ -2,8 +2,10 @@ package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"log"
+	"math/rand"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
@@ -50,9 +52,13 @@ type Gateway struct {
 	whiteList []*regexp.Regexp // 编译后的白名单正则
 }
 
+var configFile = flag.String("f", "etc/gateway.yaml", "the config file")
+
 func main() {
+	flag.Parse()
+
 	var config Config
-	conf.MustLoad("etc/gateway.yaml", &config)
+	conf.MustLoad(*configFile, &config)
 
 	// 初始化日志
 	logx.MustSetup(config.Log)
@@ -205,30 +211,23 @@ func (g *Gateway) extractServiceName(path string) string {
 
 // getServiceAddr 从配置或etcd获取服务地址
 func (g *Gateway) getServiceAddr(serviceName string) (string, error) {
-	// ========== 静态配置的API服务地址（优先）==========
+	// ========== 静态配置的API服务地址（初步开发的时候使用的静态的，现在改为向Etcd动态发现）==========
 	// Docker环境使用容器名，本地开发使用127.0.0.1
-	staticServices := map[string]string{
-		"auth-api":    "skyeim-auth-api:10001",
-		"user-api":    "skyeim-user-api:10100",
-		"friend-api":  "skyeim-friend-api:10200",
-		"message-api": "skyeim-message-api:10400",
-		"group-api":   "skyeim-group-api:10500",
-		"upload-api":  "skyeim-upload-api:10600",
-	}
-	// 本地开发使用127.0.0.1
-	// staticServices := map[string]string{
-	// 	"auth-api":    "127.0.0.1:10001",
-	// 	"user-api":    "127.0.0.1:10100",
-	// 	"friend-api":  "127.0.0.1:10200",
-	// 	"message-api": "127.0.0.1:10400",
-	// 	"group-api":   "127.0.0.1:10500",
-	// 	"upload-api":  "127.0.0.1:10600",
-	// }
-	// 先查静态配置
-	if addr, ok := staticServices[serviceName]; ok {
-		logx.Infof("使用静态配置: %s -> %s", serviceName, addr)
-		return addr, nil
-	}
+	/*
+		staticServices := map[string]string{
+			"auth-api":    "skyeim-auth-api:10001",
+			"user-api":    "skyeim-user-api:10100",
+			"friend-api":  "skyeim-friend-api:10200",
+			"message-api": "skyeim-message-api:10400",
+			"group-api":   "skyeim-group-api:10500",
+			"upload-api":  "skyeim-upload-api:10600",
+		}
+		// 先查静态配置
+		if addr, ok := staticServices[serviceName]; ok {
+			logx.Infof("使用静态配置: %s -> %s", serviceName, addr)
+			return addr, nil
+		}
+	*/
 
 	// ========== 如果没有静态配置，从etcd查找（用于RPC服务或动态服务）==========
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
@@ -241,14 +240,12 @@ func (g *Gateway) getServiceAddr(serviceName string) (string, error) {
 
 	values := sub.Values()
 	// 返回所有注册的服务实例地址
-	// 例如: ["127.0.0.1:10100", "127.0.0.1:10101"]（多实例）
 
 	if len(values) == 0 {
 		return "", fmt.Errorf("服务 %s 无可用实例", serviceName)
 	}
-	// ========== 简单负载均衡（取第一个）==========
-	serviceAddr := values[0]
-	// TODO: 可以实现更复杂的负载均衡算法（轮询、随机、权重等）
+	// ========== 随机负载均衡 ==========
+	serviceAddr := values[rand.Intn(len(values))]
 
 	// ========== 超时检查 ==========
 	select {

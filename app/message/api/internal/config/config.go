@@ -4,6 +4,7 @@
 package config
 
 import (
+	"github.com/zeromicro/go-zero/core/discov"
 	"github.com/zeromicro/go-zero/rest"
 	"github.com/zeromicro/go-zero/zrpc"
 )
@@ -17,4 +18,5 @@ type Config struct {
 	MessageRpc zrpc.RpcClientConf
 	GroupRpc   zrpc.RpcClientConf `json:",optional"`
 	FriendRpc  zrpc.RpcClientConf `json:",optional"`
+	Etcd       discov.EtcdConf
 }

@@ -1,5 +1,5 @@
 Name: friend-api
-Host: 0.0.0.0
+Host: 127.0.0.1
 Port: 10200
 
 # Etcd 服务注册（让Gateway可以发现此服务）

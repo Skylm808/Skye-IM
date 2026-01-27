@@ -1,6 +1,9 @@
 package config
 
-import "github.com/zeromicro/go-zero/rest"
+import (
+	"github.com/zeromicro/go-zero/core/discov"
+	"github.com/zeromicro/go-zero/rest"
+)
 
 type Config struct {
 	rest.RestConf
@@ -29,4 +32,5 @@ type Config struct {
 		AllowedImageTypes []string
 		AllowedFileTypes  []string
 	}
+	Etcd discov.EtcdConf
 }

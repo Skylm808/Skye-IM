@@ -22,7 +22,7 @@ services:
       - --initial-cluster=node1=http://etcd:2380
       - --initial-cluster-state=new
     healthcheck:
-      test: ["CMD", "etcdctl", "endpoint", "health"]
+      test: [ "CMD", "etcdctl", "endpoint", "health" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -40,7 +40,7 @@ services:
     networks:
       - skyeim-network
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: [ "CMD", "redis-cli", "ping" ]
       interval: 10s
       timeout: 3s
       retries: 5
@@ -64,7 +64,7 @@ services:
     networks:
       - skyeim-network
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p630630"]
+      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p630630" ]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -85,7 +85,7 @@ services:
     networks:
       - skyeim-network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      test: [ "CMD", "curl", "-f", "http://localhost:9000/minio/health/live" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -156,9 +156,9 @@ services:
     build:
       context: .
       dockerfile: app/message/api/Dockerfile
-    container_name: skyeim-message-api
-    ports:
-      - "10400:10400"
+    # container_name: skyeim-message-api  # 已删除以支持扩容
+    # ports:                               # 已删除以支持扩容
+    #   - "10400:10400"
     depends_on:
       mysql:
         condition: service_healthy
@@ -223,9 +223,9 @@ services:
     build:
       context: .
       dockerfile: app/user/rpc/Dockerfile
-    container_name: skyeim-user-rpc
-    ports:
-      - "9100:9100"
+    # container_name: skyeim-user-rpc  # 已删除以支持扩容
+    # ports:                            # 已删除以支持扩容
+    #   - "9100:9100"
     depends_on:
       mysql:
         condition: service_healthy
@@ -261,9 +261,9 @@ services:
     build:
       context: .
       dockerfile: app/message/rpc/Dockerfile
-    container_name: skyeim-message-rpc
-    ports:
-      - "9300:9300"
+    # container_name: skyeim-message-rpc  # 已删除以支持扩容
+    # ports:                               # 已删除以支持扩容
+    #   - "9300:9300"
     depends_on:
       mysql:
         condition: service_healthy
@@ -361,7 +361,7 @@ networks:
     driver: bridge
 
 volumes:
-  mysql-data:      # MySQL 数据持久化
-  redis-data:      # Redis 数据持久化
-  etcd-data:       # etcd 数据持久化
-  minio-data:      # MinIO 对象存储数据持久化
+  mysql-data: # MySQL 数据持久化
+  redis-data: # Redis 数据持久化
+  etcd-data: # etcd 数据持久化
+  minio-data: # MinIO 对象存储数据持久化

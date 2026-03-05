@@ -305,7 +305,7 @@ func (h *Hub) routeGroupMessage(msg *GroupMessage) {
 				if _, err := h.svcCtx.Redis.Sadd(redisKey, redisMembers...); err != nil {
 					logx.Errorf("[Hub] Failed to cache group members for %s: %v", msg.GroupId, err)
 				}
-				h.svcCtx.Redis.Expire(redisKey, 7*24*60*60)
+				h.svcCtx.Redis.Expire(redisKey, 10*60)
 			}()
 		}
 	}

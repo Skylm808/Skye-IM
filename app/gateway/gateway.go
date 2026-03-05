@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"flag"
 	"fmt"
 	"log"
@@ -11,6 +10,7 @@ import (
 	"net/url"
 	"regexp"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/golang-jwt/jwt/v4"
@@ -33,7 +33,7 @@ type Config struct {
 // JWT认证配置
 type AuthConfig struct {
 	AccessSecret string // JWT密钥（Skylm-im-secret-key）
-	AccessExpire int64  // Token过期时间（604800秒=7天）
+	AccessExpire int64  // AccessToken过期时间（7200秒=2h）
 }
 
 // CORS跨域配置
@@ -48,8 +48,9 @@ type CorsConfig struct {
 
 // =============== Gateway核心结构体 ===============
 type Gateway struct {
-	config    Config           // 配置（完整的Config）
-	whiteList []*regexp.Regexp // 编译后的白名单正则
+	config      Config           // 配置（完整的Config）
+	whiteList   []*regexp.Regexp // 编译后的白名单正则
+	subscribers sync.Map         // 路由表：map[serviceName → *discov.Subscriber]，惰性初始化后长驻内存，持续Watch etcd
 }
 
 var configFile = flag.String("f", "etc/gateway.yaml", "the config file")
@@ -209,52 +210,44 @@ func (g *Gateway) extractServiceName(path string) string {
 	return ""
 }
 
-// getServiceAddr 从配置或etcd获取服务地址
-func (g *Gateway) getServiceAddr(serviceName string) (string, error) {
-	// ========== 静态配置的API服务地址（初步开发的时候使用的静态的，现在改为向Etcd动态发现）==========
-	// Docker环境使用容器名，本地开发使用127.0.0.1
-	/*
-		staticServices := map[string]string{
-			"auth-api":    "skyeim-auth-api:10001",
-			"user-api":    "skyeim-user-api:10100",
-			"friend-api":  "skyeim-friend-api:10200",
-			"message-api": "skyeim-message-api:10400",
-			"group-api":   "skyeim-group-api:10500",
-			"upload-api":  "skyeim-upload-api:10600",
-		}
-		// 先查静态配置
-		if addr, ok := staticServices[serviceName]; ok {
-			logx.Infof("使用静态配置: %s -> %s", serviceName, addr)
-			return addr, nil
-		}
-	*/
-
-	// ========== 如果没有静态配置，从etcd查找（用于RPC服务或动态服务）==========
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-	defer cancel()
-
-	sub, err := discov.NewSubscriber(g.config.Etcd.Hosts, serviceName)
-	if err != nil {
-		return "", fmt.Errorf("创建订阅失败: %v", err)
+// getOrCreateSubscriber 惰性初始化并缓存 Subscriber。
+// 首次调用时创建与 etcd 的长连接并持续 Watch 服务变更；
+// 后续调用直接复用已有 Subscriber，避免重复建连。
+func (g *Gateway) getOrCreateSubscriber(serviceName string) (*discov.Subscriber, error) {
+	// 快路径：已存在直接返回
+	if v, ok := g.subscribers.Load(serviceName); ok {
+		return v.(*discov.Subscriber), nil
 	}
 
-	values := sub.Values()
-	// 返回所有注册的服务实例地址
+	// 慢路径：首次创建 Subscriber（建立 etcd Watch 长连接）
+	sub, err := discov.NewSubscriber(g.config.Etcd.Hosts, serviceName)
+	if err != nil {
+		return nil, fmt.Errorf("订阅服务[%s]失败: %v", serviceName, err)
+	}
 
+	// LoadOrStore 保证并发首次请求只有一个 Subscriber 存入，防止重复建连
+	actual, _ := g.subscribers.LoadOrStore(serviceName, sub)
+	logx.Infof("[Gateway] 已建立服务[%s]的 etcd Watch 长连接", serviceName)
+	return actual.(*discov.Subscriber), nil
+}
+
+// getServiceAddr 从路由表（etcd Watch 缓存）获取服务地址，随机负载均衡
+func (g *Gateway) getServiceAddr(serviceName string) (string, error) {
+	sub, err := g.getOrCreateSubscriber(serviceName)
+	if err != nil {
+		return "", err
+	}
+
+	// Values() 直接返回 Subscriber 内部由 etcd Watch 实时维护的实例列表
+	values := sub.Values()
 	if len(values) == 0 {
 		return "", fmt.Errorf("服务 %s 无可用实例", serviceName)
 	}
-	// ========== 随机负载均衡 ==========
-	serviceAddr := values[rand.Intn(len(values))]
 
-	// ========== 超时检查 ==========
-	select {
-	case <-ctx.Done():
-		return "", fmt.Errorf("获取服务地址超时")
-	default:
-		logx.Infof("从etcd查找: %s -> %s", serviceName, serviceAddr)
-		return serviceAddr, nil
-	}
+	// 随机负载均衡
+	serviceAddr := values[rand.Intn(len(values))]
+	logx.Infof("[Gateway] 路由: %s -> %s（共%d个实例）", serviceName, serviceAddr, len(values))
+	return serviceAddr, nil
 }
 
 // proxyRequest 执行反向代理

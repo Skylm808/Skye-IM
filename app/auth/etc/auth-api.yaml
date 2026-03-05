@@ -34,12 +34,12 @@ Redis:
 # JWT AccessToken 配置
 Auth:
   AccessSecret: "Skylm-im-secret-key"
-  AccessExpire: 604800  # 7天（秒）
+  AccessExpire: 7200 # 2小时（秒）
 
 # RefreshToken 配置
 RefreshToken:
   Secret: "Skylm-im-refresh-secret-key"
-  Expire: 2592000  # 30天（秒）
+  Expire: 604800 # 7天（秒）
 
 # QQ邮箱配置
 Email:

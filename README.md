@@ -501,7 +501,8 @@ Redis:
   Host: 127.0.0.1:16379
   Pass: ""
 WebSocket:
-  PingInterval: 30
+  PingInterval: 54
+  PongTimeout: 60
   MaxMessageSize: 65536
 ```
 

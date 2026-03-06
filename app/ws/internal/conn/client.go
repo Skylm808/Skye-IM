@@ -6,7 +6,7 @@ package conn
 // 1. 连接维护：管理单个 WebSocket 连接的生命周期
 // 2. 消息读取：ReadPump 从 WebSocket 连接读取消息
 // 3. 消息写入：WritePump 向 WebSocket 连接写入消息
-// 4. 心跳管理：定期发送 Ping，处理 Pong
+// 4. 心跳管理：定期发送 WebSocket Ping 控制帧，处理 Pong 控制帧
 // 5. 消息分发：将收到的消息路由到对应的处理函数
 //
 // 设计说明：
@@ -29,14 +29,14 @@ const (
 	// 写入等待时间
 	writeWait = 10 * time.Second
 
-	// 读取 pong 超时时间
-	pongWait = 60 * time.Second
+	// 默认读取超时：服务端在该时间内收不到客户端 Pong，则判定连接失活
+	defaultPongWait = 60 * time.Second
 
-	// 发送 ping 的周期
-	pingPeriod = (pongWait * 9) / 10
+	// 默认 Ping 周期：必须小于 Pong 超时，给网络抖动留出缓冲
+	defaultPingPeriod = (defaultPongWait * 9) / 10
 
-	// 最大消息大小
-	maxMessageSize = 65536
+	// 默认最大消息大小
+	defaultMaxMessageSize = 65536
 )
 
 // Client 代表一个 WebSocket 客户端连接
@@ -47,19 +47,54 @@ type Client struct {
 	send   chan interface{}
 	svcCtx *svc.ServiceContext
 
+	// 心跳配置（协议层 WebSocket 控制帧）
+	// Server -> Client: Ping
+	// Client -> Server: Pong（由客户端 WebSocket 库自动回复）
+	pongWait   time.Duration
+	pingPeriod time.Duration
+
+	// 读取限制
+	maxMessageSize int64
+
 	done      chan struct{}
 	closeOnce sync.Once
 }
 
 // NewClient 创建新的客户端
 func NewClient(hub *Hub, conn *websocket.Conn, userId int64, svcCtx *svc.ServiceContext) *Client {
+	pongWait := defaultPongWait
+	pingPeriod := defaultPingPeriod
+	maxMessageSize := int64(defaultMaxMessageSize)
+
+	// 使用配置覆盖默认值，保持配置与运行时行为一致
+	if svcCtx != nil {
+		wsCfg := svcCtx.Config.WebSocket
+		if wsCfg.PongTimeout > 0 {
+			pongWait = time.Duration(wsCfg.PongTimeout) * time.Second
+		}
+		if wsCfg.PingInterval > 0 {
+			pingPeriod = time.Duration(wsCfg.PingInterval) * time.Second
+		}
+		if wsCfg.MaxMessageSize > 0 {
+			maxMessageSize = wsCfg.MaxMessageSize
+		}
+	}
+
+	// 兜底保护：Ping 周期必须小于 Pong 超时，避免“刚发 Ping 就超时断开”
+	if pingPeriod >= pongWait {
+		pingPeriod = (pongWait * 9) / 10
+	}
+
 	return &Client{
-		Hub:    hub,
-		UserId: userId,
-		conn:   conn,
-		send:   make(chan interface{}, 256),
-		svcCtx: svcCtx,
-		done:   make(chan struct{}),
+		Hub:            hub,
+		UserId:         userId,
+		conn:           conn,
+		send:           make(chan interface{}, 256),
+		svcCtx:         svcCtx,
+		pongWait:       pongWait,
+		pingPeriod:     pingPeriod,
+		maxMessageSize: maxMessageSize,
+		done:           make(chan struct{}),
 	}
 }
 
@@ -85,10 +120,12 @@ func (c *Client) ReadPump() {
 		c.Close()
 	}()
 
-	c.conn.SetReadLimit(maxMessageSize)
-	c.conn.SetReadDeadline(time.Now().Add(pongWait))
+	c.conn.SetReadLimit(c.maxMessageSize)
+	// 读取超时窗口：超过该时间未收到任何数据/控制帧（含 Pong）将触发断开
+	c.conn.SetReadDeadline(time.Now().Add(c.pongWait))
+	// 收到客户端 Pong 控制帧时续期读超时
 	c.conn.SetPongHandler(func(string) error {
-		c.conn.SetReadDeadline(time.Now().Add(pongWait))
+		c.conn.SetReadDeadline(time.Now().Add(c.pongWait))
 		return nil
 	})
 
@@ -115,7 +152,8 @@ func (c *Client) ReadPump() {
 
 // WritePump 写入消息的协程
 func (c *Client) WritePump() {
-	ticker := time.NewTicker(pingPeriod)
+	// 服务端定时发送 WebSocket Ping 控制帧，驱动链路保活
+	ticker := time.NewTicker(c.pingPeriod)
 	defer func() {
 		ticker.Stop()
 		c.Close()
@@ -127,9 +165,12 @@ func (c *Client) WritePump() {
 			return
 
 		case message, ok := <-c.send:
+			if !ok {
+				// send channel 已被关闭，发送 WS 关闭帧后退出
+				c.conn.WriteMessage(websocket.CloseMessage, []byte{})
+				return
+			}
 			c.conn.SetWriteDeadline(time.Now().Add(writeWait))
-			_ = ok
-
 			if err := c.conn.WriteJSON(message); err != nil {
 				logx.Errorf("[Client] User %d write error: %v", c.UserId, err)
 				return
@@ -147,10 +188,6 @@ func (c *Client) WritePump() {
 // handleMessage 处理收到的消息（路由到具体处理函数）
 func (c *Client) handleMessage(msg *Message) {
 	switch msg.Type {
-	case "ping":
-		// 心跳响应
-		c.send <- &Message{Type: "pong", Data: nil}
-
 	case "chat":
 		// 处理私聊消息
 		c.handleChatMessage(msg.Data)

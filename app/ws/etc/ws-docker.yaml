@@ -31,8 +31,8 @@ GroupRpc:
 
 # WebSocket 配置
 WebSocket:
-  PingInterval: 30      # 心跳间隔（秒）
-  PongTimeout: 60       # pong 超时（秒）
+  PingInterval: 54      # 服务端发送 WebSocket Ping 控制帧间隔（秒）
+  PongTimeout: 60       # 服务端等待客户端 WebSocket Pong 控制帧超时（秒）
   MaxMessageSize: 65536 # 最大消息大小（字节）
 
 # Redis 配置

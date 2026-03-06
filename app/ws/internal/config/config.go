@@ -25,8 +25,8 @@ type Config struct {
 
 	// WebSocket 配置
 	WebSocket struct {
-		PingInterval   int   // 心跳间隔（秒）
-		PongTimeout    int   // pong 超时（秒）
+		PingInterval   int   // 服务端发送 WebSocket Ping 控制帧的间隔（秒）
+		PongTimeout    int   // 服务端等待客户端 WebSocket Pong 控制帧的超时（秒）
 		MaxMessageSize int64 // 最大消息大小（字节）
 	}
 

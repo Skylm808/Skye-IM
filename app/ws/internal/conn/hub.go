@@ -273,7 +273,9 @@ func (h *Hub) routeGroupMessage(msg *GroupMessage) {
 	redisKey := fmt.Sprintf("im:group:members:%s", msg.GroupId)
 	members, err := h.svcCtx.Redis.Smembers(redisKey)
 	if err == nil && len(members) > 0 {
-		// 缓存命中
+		// 缓存命中，刷新 TTL（保证活跃群的缓存不过期）
+		h.svcCtx.Redis.Expire(redisKey, 10*60)
+
 		for _, m := range members {
 			if uid, err := strconv.ParseInt(m, 10, 64); err == nil {
 				userIds = append(userIds, uid)
